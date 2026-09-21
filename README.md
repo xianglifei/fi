@@ -22,11 +22,14 @@ pnpm dev        # tsup watch + Electron
 
 ```
 Electron main
- ├─ spawn: dsh --profile web --port 0 --no-open   (headless, 随机端口)
+ ├─ 首次: dsh --profile fi --from-default-profile web   (从内置模板初始化专属 profile)
+ ├─ 之后: dsh --profile fi --port 0 --no-open            (headless, 随机端口)
  ├─ 解析 stdout: "dsh web: http://127.0.0.1:<port>/?token=..."
  ├─ BrowserWindow.loadURL(url)  ← 首次加载 token 换 30 天 HttpOnly cookie
  └─ 生命周期: 崩溃重启(指数退避) / 退出 SIGTERM→SIGKILL 回收 / 单实例
 ```
+
+**独立 profile**：fi 用自己的 `~/.dsh/profiles/fi`（内置 web 模板初始化，只有 `dsh-base + dsh-web-app` 两个基础 bundle），你在浏览器版 `dsh web` profile 里装的插件（如 peak-hours、whale-widget）不会进 fi；反过来想给 fi 单独装插件，执行 `dsh plugin --profile fi add <package>`。会话历史、设置、API 凭据在 `~/.dsh` 家目录层共享，不受 profile 影响。
 
 - **外链**：window.open 和主框架跳转里的外部 http(s) 一律走系统浏览器；dsh 同源弹窗（如附件预览）开小窗口共享会话。
 - **流式中关窗确认**：preload 监听页面上停止按钮的 aria-label（“停止生成”/“Stop generating”，来自 dsh-client-ui-conversation 的 `input.stop`），流式期间关窗/退出会弹确认。dsh 改版或换语言导致标记失配时静默降级为直接关。

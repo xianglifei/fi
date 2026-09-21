@@ -6,11 +6,22 @@ import { EventEmitter } from 'node:events'
 
 export type DshState = 'idle' | 'starting' | 'ready' | 'restarting' | 'failed' | 'stopped'
 
+/**
+ * fi boots its own dsh profile so the shell is isolated from the user's
+ * browser-side `dsh web` profile (~/.dsh/profiles/web carries whatever
+ * plugins they installed there — peak-hours, whale-widget, …). On first run
+ * the profile is initialized from the shipped web template (base bundles
+ * only); sessions/settings/credentials stay shared at the home level.
+ */
+const PROFILE_NAME = 'fi'
+const PROFILE_TEMPLATE = 'web'
+
 /** The only machine-readable handshake dsh offers: the printed launch line. */
 const URL_LINE_RE = /https?:\/\/127\.0\.0\.1:\d+\/\?token=\S+/
 const ANSI_RE = /\[[0-9;?]*[A-Za-z]/g
 
-const URL_TIMEOUT_MS = 15_000
+// Generous because the very first boot also initializes the profile.
+const URL_TIMEOUT_MS = 30_000
 const KILL_GRACE_MS = 3_000
 const MAX_BACKOFF_MS = 30_000
 const STDOUT_TAIL_BYTES = 32 * 1024
@@ -109,6 +120,10 @@ export class DshProcess extends EventEmitter {
     })
   }
 
+  private dshHome(): string {
+    return process.env.DSH_HOME ?? join(homedir(), '.dsh')
+  }
+
   private setState(state: DshState): void {
     if (this.state === state) return
     this.state = state
@@ -139,13 +154,29 @@ export class DshProcess extends EventEmitter {
     this.url = null
     this.stdoutTail = ''
 
+    // First launch initializes ~/.dsh/profiles/fi from the shipped web
+    // template; afterwards boot the existing profile directly.
+    const profileDir = join(this.dshHome(), 'profiles', PROFILE_NAME)
+    const needsInit = !existsSync(join(profileDir, 'package.json'))
+
     // dsh's bin is a node script run via shebang, so `node` must be on PATH —
     // true in dev; revisit when packaging (ELECTRON_RUN_AS_NODE trick).
-    const child = spawn(bin, ['--profile', 'web', '--port', '0', '--no-open'], {
-      cwd: homedir(),
-      env: process.env,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    })
+    const child = spawn(
+      bin,
+      [
+        '--profile',
+        PROFILE_NAME,
+        ...(needsInit ? ['--from-default-profile', PROFILE_TEMPLATE] : []),
+        '--port',
+        '0',
+        '--no-open',
+      ],
+      {
+        cwd: homedir(),
+        env: process.env,
+        stdio: ['ignore', 'pipe', 'pipe'],
+      },
+    )
     this.child = child
 
     this.urlTimer = setTimeout(() => {
