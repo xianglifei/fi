@@ -6,6 +6,12 @@
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-22
+
+### Changed
+
+- fi 自有界面的图标全量换用 Lucide 线稿风格（内联官方 path 数据，无新增依赖）：四个入口按钮、项目模式入口、文件浏览器（返回/刷新/文件夹行/新任务气泡）、右键菜单、搜索弹窗共 12 处。其中「插件中心」由 dsh 的四向外箭头换为 Lucide 拼块（blocks），「刷新」换为与原图更一致的 rotate-cw。dsh 自身界面（聊天区、会话行等）的图标不在此范围，维持原样。
+
 ## [0.3.0] - 2026-09-22
 
 ### Added
@@ -42,7 +48,8 @@
 - 流式输出中的关窗确认（preload 监听停止按钮 aria-label「停止生成/Stop generating」，标记失配时静默降级为直接关）。
 - 单实例锁、macOS 标准角色菜单（复制粘贴/缩放/刷新）。
 
-[Unreleased]: https://github.com/xianglifei/fi/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/xianglifei/fi/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/xianglifei/fi/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/xianglifei/fi/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/xianglifei/fi/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/xianglifei/fi/compare/v0.1.0...v0.1.1
