@@ -17,6 +17,11 @@ window.__ModuleLoader__.load({
 		const DEFAULT_WORKSPACE_TITLE = "default";
 		const MODE_STORAGE_KEY = "fi.sidebar.mode";
 
+		/** 搜索弹窗：防抖、查询长度上限、空查询时最近会话条数（均对齐 dsh 原生搜索）。 */
+		const SEARCH_DEBOUNCE_MS = 250;
+		const SEARCH_QUERY_MAX = 500;
+		const SEARCH_RECENT_LIMIT = 8;
+
 		const ICONS = {
 			newTask: "IconPlusOutline16",
 			search: "IconSearchOutline16",
@@ -36,6 +41,12 @@ window.__ModuleLoader__.load({
 		const zh = {
 			"newTask": "新建任务",
 			"search": "搜索",
+			"search.placeholder": "搜索会话…",
+			"search.recent": "最近",
+			"search.searching": "正在搜索…",
+			"search.empty": "没有找到相关会话",
+			"search.more": "结果较多，试试更具体的关键词",
+			"search.unavailable": "消息内容搜索暂不可用，当前仅匹配标题",
 			"schedule": "定时任务",
 			"plugins": "插件中心",
 			"mode.project": "项目模式",
@@ -71,6 +82,12 @@ window.__ModuleLoader__.load({
 		const en = {
 			"newTask": "New Task",
 			"search": "Search",
+			"search.placeholder": "Search sessions…",
+			"search.recent": "Recent",
+			"search.searching": "Searching…",
+			"search.empty": "No matching sessions",
+			"search.more": "Many matches — try a more specific query",
+			"search.unavailable": "Content search is unavailable — matching titles only",
 			"schedule": "Scheduled",
 			"plugins": "Plugins",
 			"mode.project": "Projects",
@@ -214,7 +231,51 @@ button[class*="_newSession"] { display: none !important; }
   color: var(--dsw-alias-label-primary); font: inherit; font-size: 13px; line-height: 18px;
   cursor: pointer; text-align: left; white-space: nowrap; }
 .fi-fb-menu-item:hover { background: var(--dsw-alias-interactive-bg-hover); }
-.fi-fb-menu-item:focus-visible { outline: 2px solid var(--dsw-alias-label-primary); outline-offset: -2px; }
+	.fi-fb-menu-item:focus-visible { outline: 2px solid var(--dsw-alias-label-primary); outline-offset: -2px; }
+/* 搜索弹窗：ZCode 式居中面板 + 全屏模糊遮罩。portal 到 body，脱离侧栏布局；
+   层级须压过 dsh 自身浮层（fi 右键菜单为 1000）。 */
+.fi-search-backdrop { position: fixed; inset: 0; z-index: 1200; display: flex;
+  align-items: flex-start; justify-content: center; padding: 12vh 24px 24px;
+  background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px);
+  animation: fi-search-fade 0.12s ease-out; }
+.fi-search-panel { display: flex; flex-direction: column; width: min(560px, 100%);
+  max-height: 74vh; overflow: hidden; border: 0.5px solid var(--dsw-alias-border-l3);
+  border-radius: 16px; background: var(--dsw-alias-bg-layer-1);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.24);
+  animation: fi-search-pop 0.14s var(--ds-ease-in-out, ease-out); }
+.fi-search-field { flex: none; display: flex; align-items: center; gap: 8px;
+  margin: 10px 10px 8px; height: 36px; padding: 0 12px; border-radius: 999px;
+  border: 0.5px solid var(--dsw-alias-border-l4);
+  background: var(--dsw-alias-button-elevated-fill, transparent);
+  color: var(--dsw-alias-label-secondary); }
+.fi-search-field:focus-within { border-color: var(--dsw-alias-label-tertiary); }
+.fi-search-input { flex: 1; min-width: 0; border: none; outline: none; background: transparent;
+  color: var(--dsw-alias-label-primary); font: inherit; font-size: 14px; line-height: 22px; }
+.fi-search-input::placeholder { color: var(--dsw-alias-label-tertiary); }
+.fi-search-list { flex: 1; min-height: 0; overflow-y: auto; padding: 2px 6px 10px;
+  scrollbar-width: thin; scrollbar-color: var(--dsh-scrollbar-thumb, transparent) transparent; }
+.fi-search-label { box-sizing: border-box; height: 28px; display: flex; align-items: center;
+  padding: 0 10px; color: var(--dsw-alias-label-tertiary); font-size: 12px; line-height: 18px; }
+.fi-search-row { display: flex; flex-direction: column; align-items: stretch; gap: 1px; width: 100%;
+  min-height: 44px; padding: 6px 10px; border: none; border-radius: 10px; background: transparent;
+  color: var(--dsw-alias-label-primary); font: inherit; text-align: left; cursor: pointer; }
+.fi-search-row[data-active="true"], .fi-search-row:hover { background: var(--dsw-alias-interactive-bg-hover); }
+.fi-search-row-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.fi-search-row-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 14px; line-height: 20px; }
+.fi-search-row-meta { flex: none; display: flex; align-items: center; gap: 8px; margin-left: 4px;
+  color: var(--dsw-alias-label-tertiary); font-size: 12px; line-height: 20px; }
+.fi-search-row-ws { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fi-search-snippet { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  padding-left: 15px; color: var(--dsw-alias-label-secondary); font-size: 12px; line-height: 17px; }
+.fi-search-mark { border-radius: 3px; color: inherit; font-weight: 600;
+  background: var(--dsw-alias-interactive-bg-hover);
+  background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 20%, transparent); }
+.fi-search-note { color: var(--dsw-alias-label-tertiary); padding: 14px 10px; font-size: 13px; }
+.fi-search-more { color: var(--dsw-alias-label-tertiary); padding: 8px 10px 12px; font-size: 12px; text-align: center; }
+@keyframes fi-search-fade { from { opacity: 0; } }
+@keyframes fi-search-pop { from { opacity: 0; transform: scale(0.97); } }
+@media (prefers-reduced-motion: reduce) { .fi-search-backdrop, .fi-search-panel { animation: none; } }
 `;
 		const CSS_TAG_ID = "fi-sidebar/sidebar.css";
 		if (typeof document !== "undefined" && document.querySelector(`style[data-plugin-css="${CSS_TAG_ID}"]`) === null) {
@@ -247,6 +308,66 @@ button[class*="_newSession"] { display: none !important; }
 			}
 			rows.sort((a, b) => (b.updatedAt !== a.updatedAt ? b.updatedAt - a.updatedAt : (a.id < b.id ? -1 : 1)));
 			return rows;
+		}
+
+		/**
+		 * 搜索合并（规则对齐 dsh WorkspaceBrowser 的 deriveSearchResults）：本地
+		 * 标题/工作区名子串匹配按最近更新倒序排前，Host 内容命中按后端相关性追加，
+		 * 按会话去重后截到 limit；hasMore 提示「需要更具体的关键词」。可见性与
+		 * deriveRows 一致（排除子代理、已归档、空白除当前），但搜索覆盖全部工作区，
+		 * default 工作区的行不展示工作区名。content 为 null（尚未返回/无查询）时
+		 * 只出本地行；快照未就绪时两者皆空（弹窗通常在加载完成后打开）。
+		 */
+		function deriveSearchRows(sessions, workspaces, query, content, limit) {
+			const q = query.trim().toLowerCase();
+			if (q === "" || sessions.phase !== "ready" || workspaces.phase !== "ready") {
+				return { rows: [], hasMore: false };
+			}
+			const archived = new Set(workspaces.archivedSessionIds);
+			const labelBySession = new Map();
+			for (const w of workspaces.items) {
+				if (w.title === DEFAULT_WORKSPACE_TITLE) continue;
+				for (const id of w.sessionIds) if (!labelBySession.has(id)) labelBySession.set(id, w.title);
+			}
+			const local = [];
+			for (const w of workspaces.items) {
+				for (const id of w.sessionIds) {
+					const s = sessions.byId[id];
+					if (s === undefined) continue;
+					if (s.origin === "subagent" || archived.has(s.id)) continue;
+					if (s.blank && s.id !== sessions.current) continue;
+					const label = labelBySession.get(s.id);
+					if (String(s.displayTitle ?? "").toLowerCase().includes(q)
+						|| (label !== undefined && label.toLowerCase().includes(q))) {
+						local.push({ session: s, label });
+					}
+				}
+			}
+			local.sort((a, b) => (b.session.updatedAt !== a.session.updatedAt
+				? b.session.updatedAt - a.session.updatedAt
+				: (a.session.id < b.session.id ? -1 : 1)));
+			const snippetBySession = new Map();
+			if (content !== null) {
+				for (const item of content.items) {
+					if (!snippetBySession.has(item.sessionId)) snippetBySession.set(item.sessionId, item.snippet);
+				}
+			}
+			const seen = new Set();
+			const rows = [];
+			const include = (session, label) => {
+				if (seen.has(session.id)) return;
+				seen.add(session.id);
+				rows.push({ session, label, snippet: snippetBySession.get(session.id) });
+			};
+			for (const row of local) include(row.session, row.label);
+			if (content !== null) {
+				for (const item of content.items) {
+					const s = sessions.byId[item.sessionId];
+					if (s === undefined || s.blank || s.origin === "subagent" || archived.has(s.id)) continue;
+					include(s, labelBySession.get(s.id));
+				}
+			}
+			return { rows: rows.slice(0, limit), hasMore: content !== null && (content.hasMore || rows.length > limit) };
 		}
 
 		function relativeTime(timestamp, t) {
@@ -356,15 +477,213 @@ button[class*="_newSession"] { display: none !important; }
 			return host;
 		}
 
+		/** 标题里第一处命中（大小写不敏感）加亮，对齐 ZCode 的命中标记样式。 */
+		function HighlightedText({ text, query }) {
+			const q = query.trim();
+			if (q === "") return text;
+			const index = text.toLowerCase().indexOf(q.toLowerCase());
+			if (index < 0) return text;
+			return jsx.jsxs(jsx.Fragment, { children: [
+				text.slice(0, index),
+				jsx.jsx("mark", { className: "fi-search-mark", children: text.slice(index, index + q.length) }),
+				text.slice(index + q.length),
+			] });
+		}
+
+		/**
+		 * 搜索结果/最近会话行。hover 与键盘导航共用 data-active 高亮（ZCode 惯例），
+		 * 选中态变化时把行滚进可视区；内容命中在标题下追加一行摘要。
+		 */
+		function SearchRow({ row, query, active, onActivate, onPick, t }) {
+			const ref = react.useRef(null);
+			react.useEffect(() => {
+				if (active && ref.current !== null) ref.current.scrollIntoView({ block: "nearest" });
+			}, [active]);
+			const s = row.session;
+			const title = s.blank ? t("session.new") : String(s.displayTitle ?? "");
+			return jsx.jsxs("button", {
+				ref,
+				type: "button",
+				className: "fi-search-row",
+				"data-active": active ? "true" : undefined,
+				"aria-label": format(t("row.open.aria"), { name: title }),
+				onMouseEnter: onActivate,
+				onClick: onPick,
+				children: [
+					jsx.jsxs("span", { className: "fi-search-row-head", children: [
+						s.running ? jsx.jsx("span", { className: "fi-dot fi-dot--running", "aria-hidden": "true" }) : null,
+						jsx.jsx("span", { className: "fi-search-row-title", children:
+							jsx.jsx(HighlightedText, { text: title, query }) }),
+						jsx.jsxs("span", { className: "fi-search-row-meta", children: [
+							row.label !== undefined ? jsx.jsx("span", { className: "fi-search-row-ws", children: row.label }) : null,
+							s.blank ? null : relativeTime(s.updatedAt, t),
+						] }),
+					] }),
+					row.snippet === undefined ? null : jsx.jsx("span", { className: "fi-search-snippet", children: row.snippet }),
+				],
+			});
+		}
+
+		/**
+		 * 搜索弹窗（ZCode Command Center 的会话版）：全屏模糊遮罩 + 顶部居中面板。
+		 * 空查询列最近会话；输入后 250ms 防抖调 Host 内容搜索，与本地合并展示。
+		 * AbortController + 卸载/重发时中止，竞态按「最新请求胜出」处理。
+		 * 键盘 ↑/↓ 循环、Enter 打开、Esc/点遮罩关闭；输入法组合态不拦截按键。
+		 */
+		function SearchDialog({ open, recentRows, sessions, workspaces, searchSessions, searchResultLimit, onOpenSession, onClose, t }) {
+			const [query, setQuery] = react.useState("");
+			const [content, setContent] = react.useState(null);
+			const [searching, setSearching] = react.useState(false);
+			const [error, setError] = react.useState(null);
+			const [activeIndex, setActiveIndex] = react.useState(0);
+			const inputRef = react.useRef(null);
+			const trimmed = query.trim();
+
+			// 每次打开复位瞬态状态（对齐 ZCode：关闭即清空，下次进入是干净面板）
+			react.useEffect(() => {
+				if (open) {
+					setQuery("");
+					setContent(null);
+					setSearching(false);
+					setError(null);
+					setActiveIndex(0);
+					if (inputRef.current !== null) inputRef.current.focus();
+				}
+			}, [open]);
+
+			react.useEffect(() => {
+				if (!open) return undefined;
+				const q = trimmed;
+				if (q === "") {
+					setContent(null);
+					setSearching(false);
+					setError(null);
+					return undefined;
+				}
+				const controller = new AbortController();
+				setSearching(true);
+				const timer = window.setTimeout(() => {
+					searchSessions(q, controller.signal).then((result) => {
+						if (controller.signal.aborted) return;
+						setContent(result);
+						setSearching(false);
+						setError(null);
+					}).catch((err) => {
+						if (controller.signal.aborted) return;
+						setContent(null);
+						setSearching(false);
+						setError(err instanceof Error ? err.message : String(err));
+					});
+				}, SEARCH_DEBOUNCE_MS);
+				return () => {
+					window.clearTimeout(timer);
+					controller.abort();
+				};
+			}, [open, trimmed, searchSessions]);
+
+			const displayRows = react.useMemo(() => (trimmed === ""
+				? recentRows.slice(0, SEARCH_RECENT_LIMIT).map((session) => ({ session, label: undefined, snippet: undefined }))
+				: deriveSearchRows(sessions, workspaces, trimmed, content, searchResultLimit).rows),
+			[trimmed, recentRows, sessions, workspaces, content, searchResultLimit]);
+			const hasMore = trimmed !== ""
+				&& deriveSearchRows(sessions, workspaces, trimmed, content, searchResultLimit).hasMore;
+
+			// 结果集变化时把选中项收回范围内（不减位：新查询由打开/输入复位到 0）
+			react.useEffect(() => {
+				setActiveIndex((index) => Math.min(index, Math.max(0, displayRows.length - 1)));
+			}, [displayRows.length]);
+
+			if (!open) return null;
+
+			const onKeyDown = (event) => {
+				if (event.isComposing) return;
+				if (event.key === "Escape") {
+					event.stopPropagation();
+					onClose();
+					return;
+				}
+				if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+					event.preventDefault();
+					if (displayRows.length === 0) return;
+					const delta = event.key === "ArrowDown" ? 1 : -1;
+					setActiveIndex((index) => (index + delta + displayRows.length) % displayRows.length);
+					return;
+				}
+				if (event.key === "Enter") {
+					event.preventDefault();
+					const row = displayRows[activeIndex];
+					if (row !== undefined) {
+						onOpenSession(row.session.id);
+						onClose();
+					}
+				}
+			};
+
+			const body = displayRows.length === 0
+				? jsx.jsx("div", { className: "fi-search-note", title: error ?? undefined, children:
+					error !== null ? t("search.unavailable")
+						: trimmed !== "" ? (searching ? t("search.searching") : t("search.empty"))
+							: t("empty.none") })
+				: jsx.jsxs(react.Fragment, { children: [
+					trimmed === "" ? jsx.jsx("div", { className: "fi-search-label", children: t("search.recent") }) : null,
+					displayRows.map((row, index) => jsx.jsx(SearchRow, {
+						row,
+						query: trimmed,
+						active: index === activeIndex,
+						onActivate: () => setActiveIndex(index),
+						onPick: () => {
+							onOpenSession(row.session.id);
+							onClose();
+						},
+						t,
+					}, row.session.id)),
+					error !== null ? jsx.jsx("div", { className: "fi-search-more", title: error, children: t("search.unavailable") }) : null,
+					hasMore ? jsx.jsx("div", { className: "fi-search-more", children: t("search.more") }) : null,
+				] });
+
+			return reactDom.createPortal(
+				jsx.jsx("div", {
+					className: "fi-search-backdrop",
+					onKeyDown,
+					onClick: (event) => {
+						if (event.target === event.currentTarget) onClose();
+					},
+					children: jsx.jsx("div", { className: "fi-search-panel", role: "dialog", "aria-modal": "true",
+						"aria-label": t("search"), children: [
+							jsx.jsxs("div", { className: "fi-search-field", children: [
+								icon(ICONS.search, 16),
+								jsx.jsx("input", {
+									ref: inputRef,
+									className: "fi-search-input",
+									value: query,
+									maxLength: SEARCH_QUERY_MAX,
+									placeholder: t("search.placeholder"),
+									"aria-label": t("search"),
+									spellCheck: false,
+									onChange: (event) => {
+										setQuery(event.target.value);
+										setActiveIndex(0);
+									},
+								}),
+							] }),
+							jsx.jsx("div", { className: "fi-search-list", children: body }),
+						] }),
+				}),
+				document.body,
+			);
+		}
+
 		/**
 		 * fi 侧栏主体。以 priority -1 影子接管 dsh 的 sidebar.workspaces 槽位
 		 * （single 槽位取 priority 最低的注册者，同 priority 才冲突）。
 		 * 普通模式即默认视图（按钮列 + 任务列表）；项目模式入口在右上角 logo
 		 * 行，开启后整个区域切换为文件浏览器（Finder 式逐层进入），再点恢复。
-		 * useSessions / useWorkspaces / usePanelInfo / useSessionPendingInteraction
-		 * 是槽位宿主通过 provideRoot 下发的全局 hook；t 绑定本注册的 fiSidebar 词典。
+		 * 「搜索」按钮与 ⌘K/Ctrl+K 唤起居中搜索弹窗（SearchDialog，portal 到
+		 * body，两种模式与折叠态下都可用）。useSessions / useWorkspaces /
+		 * usePanelInfo / useSessionPendingInteraction 是槽位宿主通过 provideRoot
+		 * 下发的全局 hook；t 绑定本注册的 fiSidebar 词典。
 		 */
-		function FiSidebarRegion({ wide, expandSidebar, startNewTask, startNewTaskIn, openSession, useSessions, useWorkspaces, usePanelInfo, useSessionPendingInteraction, t }) {
+		function FiSidebarRegion({ wide, expandSidebar, startNewTask, startNewTaskIn, openSession, searchSessions, searchResultLimit, useSessions, useWorkspaces, usePanelInfo, useSessionPendingInteraction, t }) {
 			const [mode, setMode] = react.useState(() => {
 				try {
 					return window.localStorage.getItem(MODE_STORAGE_KEY) === "project" ? "project" : "normal";
@@ -380,6 +699,8 @@ button[class*="_newSession"] { display: none !important; }
 			};
 			const toggleHost = useLogoRowToggleHost();
 
+			const [searchOpen, setSearchOpen] = react.useState(false);
+
 			const sessions = useSessions((s) => s);
 			const workspaces = useWorkspaces((s) => s);
 			const panelActive = usePanelInfo((info) => info.activePanelId !== null);
@@ -388,17 +709,48 @@ button[class*="_newSession"] { display: none !important; }
 			const rows = react.useMemo(() => deriveRows(sessions, workspaces), [sessions, workspaces]);
 			const currentId = panelActive ? undefined : sessions.current;
 
+			// ⌘K / Ctrl+K 全局唤起（ZCode 惯例）：过滤输入法组合态与长按重复，
+			// Apple 平台认 ⌘、其余认 Ctrl，修饰键须精确匹配。
+			react.useEffect(() => {
+				const onKey = (event) => {
+					if (event.isComposing || event.repeat) return;
+					const apple = /Mac|iPhone|iPad/.test(navigator.platform);
+					if (event.key.toLowerCase() !== "k" || event.altKey || event.shiftKey) return;
+					if (apple ? !event.metaKey || event.ctrlKey : !event.ctrlKey || event.metaKey) return;
+					event.preventDefault();
+					setSearchOpen((open) => !open);
+				};
+				document.addEventListener("keydown", onKey);
+				return () => document.removeEventListener("keydown", onKey);
+			}, []);
+
+			// portal 到 body，不随侧栏宽窄/模式切换卸载；折叠态下也能 ⌘K 唤起。
+			const searchDialog = jsx.jsx(SearchDialog, {
+				open: searchOpen,
+				recentRows: rows ?? [],
+				sessions,
+				workspaces,
+				searchSessions,
+				searchResultLimit,
+				onOpenSession: openSession,
+				onClose: () => setSearchOpen(false),
+				t,
+			});
+
 			if (!wide) {
 				// 折叠 rail：只留搜索入口，点按展开侧栏（对齐 dsh 原 rail 行为）。
-				return jsx.jsx("div", {
+				return jsx.jsxs("div", {
 					className: "fi-region fi-region--rail",
-					children: jsx.jsx("button", {
-						type: "button",
-						className: "fi-action",
-						"aria-label": t("search"),
-						onClick: () => expandSidebar?.(),
-						children: icon(ICONS.search, 18),
-					}),
+					children: [
+						jsx.jsx("button", {
+							type: "button",
+							className: "fi-action",
+							"aria-label": t("search"),
+							onClick: () => expandSidebar?.(),
+							children: icon(ICONS.search, 18),
+						}),
+						searchDialog,
+					],
 				});
 			}
 
@@ -418,12 +770,12 @@ button[class*="_newSession"] { display: none !important; }
 				mode === "project"
 					? jsx.jsx(FileBrowser, { startNewTaskIn, t })
 					: jsx.jsxs(react.Fragment, { children: [
-					jsx.jsxs("div", { className: "fi-actions", children: [
-						jsx.jsx(ActionButton, { label: t("newTask"), primary: true, icon: ICONS.newTask, onClick: startNewTask }),
-						jsx.jsx(ActionButton, { label: t("search"), icon: ICONS.search, onClick: () => {} }),
-						jsx.jsx(ActionButton, { label: t("schedule"), icon: ICONS.schedule, onClick: () => {} }),
-						jsx.jsx(ActionButton, { label: t("plugins"), icon: ICONS.plugins, onClick: () => {} }),
-					] }),
+						jsx.jsxs("div", { className: "fi-actions", children: [
+							jsx.jsx(ActionButton, { label: t("newTask"), primary: true, icon: ICONS.newTask, onClick: startNewTask }),
+							jsx.jsx(ActionButton, { label: t("search"), icon: ICONS.search, onClick: () => setSearchOpen(true) }),
+							jsx.jsx(ActionButton, { label: t("schedule"), icon: ICONS.schedule, onClick: () => {} }),
+							jsx.jsx(ActionButton, { label: t("plugins"), icon: ICONS.plugins, onClick: () => {} }),
+						] }),
 					jsx.jsx("div", { className: "fi-section", children:
 						jsx.jsx("span", { className: "fi-section-label", children: t("section.tasks") }),
 					}),
@@ -441,6 +793,7 @@ button[class*="_newSession"] { display: none !important; }
 								}, s.id)),
 					}),
 				] }),
+				searchDialog,
 			] });
 		}
 		//#endregion
@@ -764,13 +1117,22 @@ button[class*="_newSession"] { display: none !important; }
 		//#endregion
 
 		//#region plugin
-		const inject = ["slots", "locale", "uiWorkspace", "workspaces"];
+		const inject = ["slots", "locale", "uiWorkspace", "workspaces", "sessions"];
 
 		function apply(ctx) {
 			const uiWorkspace = ctx.get("uiWorkspace");
 			const workspaces = ctx.get("workspaces");
+			const sessions = ctx.get("sessions");
 
 			ctx.effect(() => ctx.locale.register(NS, { zh, en }), "fi-sidebar: dictionaries");
+
+			// Host 内容搜索（SQLite FTS 全文搜会话消息）。仿 dsh ui-workspace 的
+			// Result 解包：服务层返回 {ok,value}/{ok,error}，UI 侧统一成 Promise。
+			const searchSessions = async (query, signal) => {
+				const result = await sessions.search(query, signal);
+				if (!result.ok) throw new Error(result.error.message);
+				return result.value;
+			};
 
 			const startNewTask = () => {
 				// 服务端半层通常已建好 default 工作区；极端情况下（未就绪/建区失败）
@@ -795,7 +1157,7 @@ button[class*="_newSession"] { display: none !important; }
 			ctx.slots.inject("sidebar.workspaces", () => ctx.slots.register({
 				name: "sidebar.workspaces",
 				priority: -1,
-				inject: () => ({ startNewTask, startNewTaskIn, openSession }),
+				inject: () => ({ startNewTask, startNewTaskIn, openSession, searchSessions, searchResultLimit: sessions.searchResultLimit }),
 				locale: NS,
 			}, FiSidebarRegion));
 		}

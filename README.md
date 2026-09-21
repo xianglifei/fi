@@ -40,7 +40,8 @@ Electron main
 - 项目模式入口：logo 行没有对外 slot，客户端往 dsh 原生 logo 行注入容器节点，经 React portal 渲染文件夹图标按钮（收起按钮左侧，收起态隐藏；MutationObserver 防 React 重渲染挤掉外来节点）。点击进入项目模式（图标切换为打开状态），logo 行以下整体切换为 Finder 式文件浏览器，再点恢复普通模式。
 - 项目文件浏览器：逐层进入（非树形展开），层级栈既是导航状态也是路径条（点面包屑跳转、返回上一级、手动刷新）。数据走 fi 自带的只读 Electron 文件桥（preload `window.fi.fs` → 主进程 `fs.promises.readdir(withFileTypes)`：符号链接按目标归类、断链灰显不可点，目录优先 + 自然排序，单层上限 1000 条并报 truncated）。单击文件用系统默认程序打开；右键菜单（复制路径 / 在 Finder 中显示 / 打开）走 `shell.*` 与剪贴板 IPC。浏览位置记在客户端模块级变量里：本次运行内退出项目模式再进入保持原地，重启复位。隐藏项（点前缀条目）名字与图标置灰；路径条上的「.*」按钮切换隐藏项显隐，默认不展示，选择持久在 localStorage（`fi.sidebar.showHidden`，跨重启，与只记本次运行的位置记忆不同）。浏览器直接打开 dsh 网页时无文件桥，项目模式显示提示行。
 - 「在文件夹里新建任务」（文件夹行尾的气泡加号图标，复用 dsh 原生 `IconNewChat` 造型对齐 ZCode 的新建任务图标；项目模式的核心）：客户端 `workspaces.create({ path })`（dsh `workspaceController` 远程，幂等，同一目录复用同一条工作区登记并立即合入客户端投影），随后 `uiWorkspace.startSession(workspaceId)`——复用该工作区里未发送过消息的 blank 会话，否则新建并在右侧打开。会话按 cwd 自动归入对应项目工作区，不进普通模式的 default 任务清单。右键复制路径成功不做提示（对齐系统惯例），失败提示仅保留给打开/新建动作。
-- 「搜索」「定时任务」「插件中心」为占位；普通/项目模式的选择记在 localStorage（`fi.sidebar.mode`）。
+- 「搜索」：点击按钮或按 ⌘K（Windows/Linux 为 Ctrl+K）唤起居中搜索弹窗（ZCode Command Center 的会话版：全屏模糊遮罩 + 顶部圆角面板，portal 到 body）。空查询列最近任务；输入后 250ms 防抖本地标题/工作区名匹配 + dsh 内建消息内容搜索（cordis `sessions` 服务，SQLite FTS，上限 20 条，`hasMore` 提示细化关键词）合并展示，↑/↓ 循环选择、Enter 打开、Esc/点遮罩关闭，标题命中加亮；搜索覆盖全部工作区（含项目模式文件夹），default 工作区的行不重复展示工作区名。「定时任务」「插件中心」仍为占位。普通/项目模式的选择记在 localStorage（`fi.sidebar.mode`）。
+- 会话全文搜索索引：dsh 出厂 web 模板把 `session-query-sqlite` 配成 `openAt: never`（搜索 opt-in），fi 在插件补丁（`dsh-plugin/cordis.patch.yml`）里按同 id 覆盖为 `openAt: startup` + 落盘 `~/.dsh/session-query.db`，内容搜索才可用；后端不可用时弹窗自动降级为仅标题匹配并提示。
 
 - **外链**：window.open 和主框架跳转里的外部 http(s) 一律走系统浏览器；dsh 同源弹窗（如附件预览）开小窗口共享会话。
 - **流式中关窗确认**：preload 监听页面上停止按钮的 aria-label（“停止生成”/“Stop generating”，来自 dsh-client-ui-conversation 的 `input.stop`），流式期间关窗/退出会弹确认。dsh 改版或换语言导致标记失配时静默降级为直接关。

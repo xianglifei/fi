@@ -7,3 +7,11 @@
 - insert:
     - id: fi-sidebar
       name: fi-sidebar
+# 打开会话全文搜索索引：dsh 出厂 web 模板把 session-query-sqlite 配成
+# openAt: never + :memory:（搜索是 opt-in 的），fi 依赖内容搜索，这里按同 id
+# 覆盖为启动即开、落盘到 dsh 家目录（索引是派生库，与会话日志同级共享）。
+- id: session-query-sqlite
+  name: '@deepseek-ai/dsh-session-query-sqlite'
+  config:
+    path: !!js dshHomePath('session-query.db')
+    openAt: startup
