@@ -33,6 +33,8 @@ window.__ModuleLoader__.load({
 			newTaskHere: "message-circle-plus",
 			back: "chevron-left",
 			refresh: "rotate-cw",
+			eye: "eye",
+			eyeClosed: "eye-closed",
 			copyPath: "copy",
 			reveal: "arrow-up-right",
 			open: "folder-open",
@@ -53,6 +55,8 @@ window.__ModuleLoader__.load({
 			"message-circle-plus": '<path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"/><path d="M8 12h8"/><path d="M12 8v8"/>',
 			"chevron-left": '<path d="m15 18-6-6 6-6"/>',
 			"rotate-cw": '<path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>',
+			"eye": '<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/>',
+			"eye-closed": '<path d="m15 18-.722-3.25"/><path d="M2 8a10.645 10.645 0 0 0 20 0"/><path d="m20 15-1.726-2.05"/><path d="m4 15 1.726-2.05"/><path d="m9 18 .722-3.25"/>',
 			"copy": '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
 			"arrow-up-right": '<path d="M7 7h10v10"/><path d="M7 17 17 7"/>',
 		};
@@ -232,7 +236,6 @@ button[class*="_newSession"] { display: none !important; }
 .fi-fb-nav:focus-visible { outline: 2px solid var(--dsw-alias-label-primary); outline-offset: -2px; }
 .fi-fb-nav[aria-pressed="true"] { color: var(--dsw-alias-label-primary);
   background: var(--dsw-alias-interactive-bg-active); }
-.fi-fb-nav-text { font-size: 11px; font-weight: 600; line-height: 1; letter-spacing: 0.2px; }
 .fi-fb-crumbs { flex: 1; min-width: 0; display: flex; align-items: center; overflow-x: auto;
   scrollbar-width: none; white-space: nowrap; padding: 2px; }
 .fi-fb-crumbs::-webkit-scrollbar { display: none; }
@@ -1110,7 +1113,7 @@ button[class*="_newSession"] { display: none !important; }
 						children: icon(ICONS.back, 14),
 					}),
 					stack === null ? null : jsx.jsx(FbCrumbs, { stack, onJump: jump }),
-					// 「.*」= dotfiles：按下为展示隐藏项，弹起为隐藏（未动过开关时默认隐藏）
+					// 隐藏项显隐开关：睁眼=展示隐藏项，闭眼=隐藏（未动过开关时默认隐藏）
 					jsx.jsx("button", {
 						type: "button",
 						className: "fi-fb-nav",
@@ -1118,7 +1121,7 @@ button[class*="_newSession"] { display: none !important; }
 						title: t("fb.toggleHidden"),
 						"aria-pressed": showHidden ? "true" : "false",
 						onClick: toggleHidden,
-						children: jsx.jsx("span", { className: "fi-fb-nav-text", children: ".*" }),
+						children: icon(showHidden ? ICONS.eye : ICONS.eyeClosed, 14),
 					}),
 					jsx.jsx("button", {
 						type: "button",
