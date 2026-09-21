@@ -6,6 +6,8 @@
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-22
+
 ### Added
 
 - 侧栏「搜索」正式可用：点击搜索按钮或按 ⌘K（Windows/Linux 为 Ctrl+K）弹出居中搜索框，可按任务标题和消息内容检索自己的全部任务（含项目模式各文件夹里的会话）；↑/↓ 选择、回车打开、Esc 关闭，无关键词时展示最近任务。消息内容搜索由 dsh 内建引擎提供（仅搜有工作目录的可见会话），结果较多时会提示换更具体的关键词。
@@ -40,7 +42,8 @@
 - 流式输出中的关窗确认（preload 监听停止按钮 aria-label「停止生成/Stop generating」，标记失配时静默降级为直接关）。
 - 单实例锁、macOS 标准角色菜单（复制粘贴/缩放/刷新）。
 
-[Unreleased]: https://github.com/xianglifei/fi/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/xianglifei/fi/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/xianglifei/fi/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/xianglifei/fi/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/xianglifei/fi/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/xianglifei/fi/releases/tag/v0.1.0
