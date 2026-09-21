@@ -16,6 +16,8 @@ pnpm dev        # tsup watch + Electron
 - `FI_DSH_BIN` — 指定 dsh 可执行文件路径（默认按 PATH → homebrew → /usr/local 顺序找）
 - `FI_DSH_URL` — 不 spawn，直接连接一个已在运行的 `dsh --profile web`（值带上 `?token=...`）
 
+版本历史见 [CHANGELOG.md](CHANGELOG.md)；发版规则见 [AGENTS.md](AGENTS.md)。
+
 ## 工作原理
 
 只依赖 dsh 的一条最小契约：**spawn → stdout 里的登录 URL → loadURL**。
