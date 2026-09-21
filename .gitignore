@@ -1,0 +1,13 @@
+# 参考资料仓库（不要提交/上传）
+References/
+
+# 构建产物与依赖
+node_modules/
+out/
+*.log
+
+# 会话工具元数据
+.zcode/
+
+# macOS 系统文件
+.DS_Store

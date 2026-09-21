@@ -1,0 +1,20 @@
+{
+  "name": "fi",
+  "productName": "fi",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Electron desktop shell for the dsh web UI",
+  "main": "out/main/index.js",
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "dev": "node scripts/dev.mjs",
+    "start": "pnpm build && electron ."
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.2",
+    "electron": "^44.4.3",
+    "tsup": "^8.5.1",
+    "typescript": "^7.0.2"
+  }
+}
