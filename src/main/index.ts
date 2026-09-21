@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain } from 'electron'
 import { DshProcess } from './dsh-process'
 import { attachCloseGuard } from './close-guard'
 import { installMenu } from './menu'
+import { registerFsBridge } from './fs-bridge'
 import { createMainWindow, setDshOrigin } from './window'
 
 const dsh = new DshProcess()
@@ -90,6 +91,7 @@ if (!gotLock) {
 
   app.whenReady().then(() => {
     installMenu()
+    registerFsBridge()
     showWindow()
     dsh.start()
   })

@@ -2,6 +2,20 @@ import { contextBridge, ipcRenderer } from 'electron'
 
 contextBridge.exposeInMainWorld('fi', {
   retry: () => ipcRenderer.send('fi:retry'),
+
+  // --- 项目模式文件桥（见 src/main/fs-bridge.ts）---
+  // 全部返回结构化结果 Promise；只读文件系统 + 系统语义动作。
+  fs: {
+    home: () => ipcRenderer.invoke('fi:fs:home'),
+    readdir: (path: string) => ipcRenderer.invoke('fi:fs:readdir', path),
+  },
+  shell: {
+    open: (path: string) => ipcRenderer.invoke('fi:shell:open', path),
+    showInFolder: (path: string) => ipcRenderer.invoke('fi:shell:show-in-folder', path),
+  },
+  clipboard: {
+    write: (text: string) => ipcRenderer.invoke('fi:clipboard:write', text),
+  },
 })
 
 // --- busy watcher (drives the close confirmation in the main process) ---

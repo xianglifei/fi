@@ -1,0 +1,9 @@
+# fi-sidebar —— dsh bundle patch（激活声明）
+# dsh 启动时按 bundle 层栈叠加各插件 patch；本文件把插件插进 fi profile 的配置树，
+# 只有出现在配置树里的插件，其 dsh.client 客户端半层才会被 boot 扫描装载。
+#
+# 本地开发安装（fi 主进程启动时也会自动执行）：
+#   dsh plugin --profile fi add link:<本目录绝对路径>
+- insert:
+    - id: fi-sidebar
+      name: fi-sidebar
