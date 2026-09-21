@@ -23,15 +23,56 @@ window.__ModuleLoader__.load({
 		const SEARCH_RECENT_LIMIT = 8;
 
 		const ICONS = {
-			newTask: "IconPlusOutline16",
-			search: "IconSearchOutline16",
-			schedule: "IconAlarmClockOutline16",
-			plugins: "IconCordisPluginOutline14",
-			projectOff: "IconFolderClose16",
-			projectOn: "IconFolderOpen16",
+			newTask: "plus",
+			search: "search",
+			schedule: "alarm-clock",
+			plugins: "blocks",
+			projectOff: "folder",
+			projectOn: "folder-open",
+			folderRow: "folder",
+			newTaskHere: "message-circle-plus",
+			back: "chevron-left",
+			refresh: "rotate-cw",
+			copyPath: "copy",
+			reveal: "arrow-up-right",
+			open: "folder-open",
+		};
+
+		/**
+		 * fi 自有 UI 的图标全量换用 Lucide 线稿：官方 path 数据内联（ISC 协议，
+		 * 无运行时依赖），渲染为 24 网格 stroke 风格，颜色继承 currentColor。
+		 * 表里没有的名字回落 dsh primitives（fill 风格），保证新调用点永远可用。
+		 */
+		const LUCIDE_INNER = {
+			"plus": '<path d="M5 12h14"/><path d="M12 5v14"/>',
+			"search": '<path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/>',
+			"alarm-clock": '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M5 3 2 6"/><path d="m22 6-3-3"/><path d="M6.38 18.7 4 21"/><path d="M17.64 18.67 20 21"/>',
+			"blocks": '<path d="M10 22V7a1 1 0 0 0-1-1H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5a1 1 0 0 0-1-1H2"/><rect x="14" y="2" width="8" height="8" rx="1"/>',
+			"folder": '<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>',
+			"folder-open": '<path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/>',
+			"message-circle-plus": '<path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"/><path d="M8 12h8"/><path d="M12 8v8"/>',
+			"chevron-left": '<path d="m15 18-6-6 6-6"/>',
+			"rotate-cw": '<path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>',
+			"copy": '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+			"arrow-up-right": '<path d="M7 7h10v10"/><path d="M7 17 17 7"/>',
 		};
 
 		function icon(name, size) {
+			const inner = LUCIDE_INNER[name];
+			if (inner !== undefined) {
+				return jsx.jsx("svg", {
+					width: size ?? 16,
+					height: size ?? 16,
+					viewBox: "0 0 24 24",
+					fill: "none",
+					stroke: "currentColor",
+					strokeWidth: 2,
+					strokeLinecap: "round",
+					strokeLinejoin: "round",
+					"aria-hidden": "true",
+					dangerouslySetInnerHTML: { __html: inner },
+				});
+			}
 			const Icon = primitives[name];
 			return Icon === undefined ? null : jsx.jsx(Icon, { size: size ?? 16 });
 		}
@@ -421,7 +462,6 @@ button[class*="_newSession"] { display: none !important; }
 		 * 文件夹图标呼应侧栏的项目分组语义；激活（项目模式开启）时换打开的文件夹。
 		 */
 		function ProjectModeToggle({ active, onToggle, t }) {
-			const Icon = primitives[active ? ICONS.projectOn : ICONS.projectOff];
 			return jsx.jsx(primitives.Tooltip, {
 				label: t("mode.project"),
 				side: "bottom",
@@ -432,7 +472,7 @@ button[class*="_newSession"] { display: none !important; }
 					"aria-label": t("mode.project"),
 					"aria-pressed": active ? "true" : "false",
 					onClick: onToggle,
-					children: Icon === undefined ? null : jsx.jsx(Icon, { size: 16 }),
+					children: icon(active ? ICONS.projectOn : ICONS.projectOff, 16),
 				}),
 			});
 		}
@@ -886,7 +926,7 @@ button[class*="_newSession"] { display: none !important; }
 				onContextMenu: (event) => onMenu(event, entry),
 				children: [
 					jsx.jsx("span", { className: "fi-fb-row-icon", children:
-						isDir ? icon("IconFolderClose16", 16) : null }),
+						isDir ? icon(ICONS.folderRow, 16) : null }),
 					jsx.jsx("span", { className: "fi-fb-row-name", children: entry.name }),
 					isDir ? jsx.jsx("span", {
 						className: "fi-fb-new",
@@ -897,9 +937,9 @@ button[class*="_newSession"] { display: none !important; }
 							event.stopPropagation();
 							onNewTask(entry);
 						},
-						// 气泡+加号（dsh IconNewChat）：对齐 ZCode 的新建任务图标，
-						// 避免裸加号在文件列表里被误读为「新建文件」。
-						children: icon("IconNewChatOutline16", 14),
+						// 气泡+加号（Lucide message-circle-plus）：对齐 ZCode 的新建任务
+						// 图标，避免裸加号在文件列表里被误读为「新建文件」。
+						children: icon(ICONS.newTaskHere, 14),
 					}) : null,
 				],
 			});
@@ -925,9 +965,9 @@ button[class*="_newSession"] { display: none !important; }
 				};
 			}, [onClose]);
 			const items = [
-				{ label: t("fb.copyPath"), iconName: "IconCopyOutline16", act: onCopy },
-				{ label: t("fb.reveal"), iconName: "IconRightUpOutline14", act: onReveal },
-				{ label: t("fb.open"), iconName: "IconFolderOpenOutline16", act: onOpen },
+				{ label: t("fb.copyPath"), iconName: ICONS.copyPath, act: onCopy },
+				{ label: t("fb.reveal"), iconName: ICONS.reveal, act: onReveal },
+				{ label: t("fb.open"), iconName: ICONS.open, act: onOpen },
 			];
 			const style = {
 				left: Math.max(4, Math.min(x, window.innerWidth - 188)),
@@ -1067,7 +1107,7 @@ button[class*="_newSession"] { display: none !important; }
 						title: t("fb.back"),
 						disabled: stack === null || stack.length <= 1,
 						onClick: goUp,
-						children: icon("IconChevronLeftOutline14", 14),
+						children: icon(ICONS.back, 14),
 					}),
 					stack === null ? null : jsx.jsx(FbCrumbs, { stack, onJump: jump }),
 					// 「.*」= dotfiles：按下为展示隐藏项，弹起为隐藏（未动过开关时默认隐藏）
@@ -1087,7 +1127,7 @@ button[class*="_newSession"] { display: none !important; }
 						title: t("fb.refresh"),
 						disabled: current === null,
 						onClick: refresh,
-						children: icon("IconRefreshOutline16", 14),
+						children: icon(ICONS.refresh, 14),
 					}),
 				] }),
 				status !== null ? jsx.jsx("div", { className: "fi-fb-status", children: status }) : null,
