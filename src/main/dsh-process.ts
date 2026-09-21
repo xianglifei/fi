@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { EventEmitter } from 'node:events'
+import { ensurePluginInstalled } from './dsh-plugin'
 
 export type DshState = 'idle' | 'starting' | 'ready' | 'restarting' | 'failed' | 'stopped'
 
@@ -32,9 +33,11 @@ export class DshProcess extends EventEmitter {
   lastError: string | null = null
 
   private child: ChildProcess | null = null
+  private prepareChildren: ChildProcess[] = []
   private stopping = false
   private disposed = false
   private attempts = 0
+  private preparing = false
   private urlTimer: NodeJS.Timeout | null = null
   private killTimer: NodeJS.Timeout | null = null
   private restartTimer: NodeJS.Timeout | null = null
@@ -89,6 +92,16 @@ export class DshProcess extends EventEmitter {
     if (this.urlTimer) clearTimeout(this.urlTimer)
     if (this.restartTimer) clearTimeout(this.restartTimer)
     this.urlTimer = this.restartTimer = null
+    // Preparation children (first-run init server, plugin install) must not
+    // outlive us either — quit can land mid-preparation.
+    for (const extra of this.prepareChildren) {
+      try {
+        extra.kill('SIGTERM')
+      } catch {
+        /* already gone */
+      }
+    }
+    this.prepareChildren = []
     const child = this.child
     if (!child) {
       this.state = 'stopped'
@@ -144,20 +157,111 @@ export class DshProcess extends EventEmitter {
     }
   }
 
+  /**
+   * One-time boot preparation (first-run profile init, sidebar plugin link-in)
+   * before the real headless dsh spawn. Preparation failures degrade: a failed
+   * plugin install keeps the stock sidebar, only a failed profile init fails.
+   */
   private spawnDsh(): void {
+    if (this.preparing) return
+    this.preparing = true
     const bin = DshProcess.resolveBinary()
     if (!bin) {
+      this.preparing = false
       this.fail('找不到 dsh 可执行文件；请安装 @deepseek-ai/dsh 或设置 FI_DSH_BIN 指向它')
       return
     }
     this.setState(this.attempts === 0 ? 'starting' : 'restarting')
+    void (async () => {
+      const profileDir = join(this.dshHome(), 'profiles', PROFILE_NAME)
+      // First launch initializes ~/.dsh/profiles/fi from the shipped web
+      // template; afterwards boot the existing profile directly.
+      if (!existsSync(join(profileDir, 'package.json'))) {
+        await this.initProfile(bin)
+      }
+      // The fi sidebar rides a bundled dsh plugin; link it in once. A failed
+      // install only costs us the redesigned sidebar, never the shell itself.
+      await ensurePluginInstalled(bin, this.dshHome(), PROFILE_NAME)
+      this.preparing = false
+      if (!this.stopping && !this.disposed) this.spawnDshProcess(bin)
+    })().catch((err: unknown) => {
+      this.preparing = false
+      this.fail(`dsh profile 初始化失败：${err instanceof Error ? err.message : String(err)}`)
+    })
+  }
+
+  /**
+   * First-run profile initialization. dsh has no "init only" mode: the same
+   * command initializes the profile and then serves it. We let it run until it
+   * prints the ready URL (profile usable), then stop that throwaway server and
+   * link the sidebar plugin before the real spawn — plugin install needs the
+   * profile's package.json to exist, and mutating it under a live dsh would
+   * race the boot scan.
+   */
+  private initProfile(bin: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const child = spawn(
+        bin,
+        [
+          '--profile',
+          PROFILE_NAME,
+          '--from-default-profile',
+          PROFILE_TEMPLATE,
+          '--port',
+          '0',
+          '--no-open',
+        ],
+        {
+          cwd: homedir(),
+          env: process.env,
+          stdio: ['ignore', 'pipe', 'pipe'],
+        },
+      )
+      this.prepareChildren.push(child)
+      let tail = ''
+      let urlSeen = false
+      let settled = false
+      const timer = setTimeout(() => {
+        try {
+          child.kill('SIGTERM')
+        } catch {
+          /* already gone */
+        }
+        finish(false, `初始化超时（${URL_TIMEOUT_MS / 1000}s 内未就绪）`)
+      }, URL_TIMEOUT_MS)
+      const finish = (ok: boolean, why: string) => {
+        if (settled) return
+        settled = true
+        clearTimeout(timer)
+        if (ok) resolve()
+        else reject(new Error(why))
+      }
+      child.stdout?.on('data', (chunk: Buffer) => {
+        tail = (tail + chunk.toString('utf8')).slice(-STDOUT_TAIL_BYTES)
+        if (urlSeen) return
+        if (!URL_LINE_RE.test(tail.replace(ANSI_RE, ''))) return
+        urlSeen = true
+        try {
+          child.kill('SIGTERM')
+        } catch {
+          /* already gone */
+        }
+      })
+      child.stderr?.on('data', (chunk: Buffer) => {
+        tail = (tail + chunk.toString('utf8')).slice(-STDOUT_TAIL_BYTES)
+      })
+      child.on('error', (err) => finish(false, err.message))
+      child.on('exit', (code) => {
+        if (urlSeen) finish(true, '')
+        else finish(false, `初始化进程提前退出（code=${code}）：${tail.trim().split('\n').slice(-3).join(' | ')}`)
+      })
+    })
+  }
+
+  private spawnDshProcess(bin: string): void {
+    if (this.stopping || this.disposed) return
     this.url = null
     this.stdoutTail = ''
-
-    // First launch initializes ~/.dsh/profiles/fi from the shipped web
-    // template; afterwards boot the existing profile directly.
-    const profileDir = join(this.dshHome(), 'profiles', PROFILE_NAME)
-    const needsInit = !existsSync(join(profileDir, 'package.json'))
 
     // dsh's bin is a node script run via shebang, so `node` must be on PATH —
     // true in dev; revisit when packaging (ELECTRON_RUN_AS_NODE trick).
@@ -166,7 +270,6 @@ export class DshProcess extends EventEmitter {
       [
         '--profile',
         PROFILE_NAME,
-        ...(needsInit ? ['--from-default-profile', PROFILE_TEMPLATE] : []),
         '--port',
         '0',
         '--no-open',
