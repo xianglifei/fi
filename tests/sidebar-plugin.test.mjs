@@ -1,6 +1,6 @@
 // 侧栏插件 fi-sidebar——模块加载 + 纯逻辑单元测试。
 // 被测对象：dsh-plugin/lib/client.js（真实源码，在桩环境中加载后提取内部纯函数）。
-// 覆盖：0.2 任务列表/搜索合并、0.4 图标表、0.5 面板筛选与调度文案、词典完整性。
+// 覆盖：0.2 任务列表/搜索合并、0.4 图标表、0.5 面板筛选与调度文案、启动钉子、词典完整性。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -55,19 +55,23 @@ const pureFns = new Function(`
   ${extractFn('cronFilterKind')}
   ${extractFn('cronScheduleText')}
   ${extractFn('cronFutureRelative')}
+  ${extractFn('placeToggleHost')}
   const pad2 = (v) => String(v).padStart(2, '0');
   const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
-  return { format, deriveRows, deriveSearchRows, relativeTime, cronHasFailure, cronStatusKind, cronFilterKind, cronScheduleText, cronFutureRelative };
+  return { format, deriveRows, deriveSearchRows, relativeTime, cronHasFailure, cronStatusKind, cronFilterKind, cronScheduleText, cronFutureRelative, placeToggleHost };
 `)()
 
-// 从 apply() 里捕获真实词典（zh/en）
+// 从 apply() 里捕获真实词典（zh/en）与全部槽位注册
 const plugin = loadPlugin()
-const captured = {}
+const captured = { slotNames: [], registrations: [] }
 plugin.exports.apply({
-  get: () => ({ list: { getSnapshot: () => ({ items: [] }) } }),
+  get: () => ({ list: { getSnapshot: () => ({ items: [] }), subscribe: () => () => {} } }),
   effect: (fn) => fn(),
   locale: { register: (ns, dicts) => { captured.ns = ns; captured.dicts = dicts } },
-  slots: { inject: (name, factory) => { captured.slotName = name; factory() }, register: () => ({}) },
+  slots: {
+    inject: (name, factory) => { captured.slotNames.push(name); factory() },
+    register: (options, component) => { captured.registrations.push({ options, component }); return () => {} },
+  },
 })
 const zh = captured.dicts.zh
 const en = captured.dicts.en
@@ -87,7 +91,92 @@ test('exports 声明的 inject 面与实现一致', () => {
 
 test('apply(): 注册 fiSidebar 词典 + 以 sidebar.workspaces 槽位影子接管', () => {
   assert.equal(captured.ns, 'fiSidebar')
-  assert.equal(captured.slotName, 'sidebar.workspaces')
+  assert.ok(captured.slotNames.includes('sidebar.workspaces'))
+})
+
+test('apply(): 注册 sidebar.brand.name 空渲染——去掉「deepseek HARNESS」文字标', () => {
+  const reg = captured.registrations.find((r) => r.options.name === 'sidebar.brand.name')
+  assert.ok(reg, '找到 sidebar.brand.name 注册')
+  assert.equal(reg.options.priority, -1, '影子接管优先级')
+  assert.equal(typeof reg.component, 'function', '组件是可调用函数')
+  assert.equal(reg.component(), null, '渲染为空：single 槽位有注册项即不再走文字 fallback')
+})
+
+// ---------------------------------------------------------------------------
+// 启动钉子（冷启动固定到 default 工作区，不再跟着 dsh「最近活动」走）
+// ---------------------------------------------------------------------------
+
+/**
+ * 独立装一次插件，拿到可驱动的 workspaces/sessions 列表桩与 startSession 记录。
+ * set() 更新快照并通知订阅者，模拟 dsh store 的就绪与后续更新。
+ */
+function bootPinHarness() {
+  const calls = []
+  const mkList = () => {
+    const listeners = new Set()
+    const store = {
+      snapshot: { phase: 'loading', items: [], ids: [], byId: {}, current: undefined, archivedSessionIds: [] },
+      getSnapshot: () => store.snapshot,
+      subscribe: (fn) => (listeners.add(fn), () => listeners.delete(fn)),
+      set: (next) => { store.snapshot = next; for (const fn of [...listeners]) fn() },
+    }
+    return store
+  }
+  const workspaces = { list: mkList() }
+  const sessions = { list: mkList() }
+  loadPlugin().exports.apply({
+    get: (name) => ({ workspaces, sessions, uiWorkspace: { startSession: (id) => calls.push(id) } })[name],
+    effect: (fn) => fn(),
+    locale: { register: () => {} },
+    slots: { inject: () => {}, register: () => ({}) },
+  })
+  return { workspaces, sessions, calls }
+}
+
+const wsApp = { title: 'Applications', workspaceId: 'ws-app', sessionIds: ['b1'] }
+const wsDefault = { title: 'default', workspaceId: 'ws-def', sessionIds: ['d1'] }
+const sessionsReady = (extra = {}) => ({
+  phase: 'ready', ids: [], byId: {}, current: undefined, archivedSessionIds: [], ...extra,
+})
+
+test('启动钉子：两库就绪且无当前会话 → 钉到 default，且只钉一次', () => {
+  const h = bootPinHarness()
+  h.workspaces.list.set({ phase: 'ready', items: [wsApp, wsDefault], archivedSessionIds: [] })
+  assert.deepEqual(h.calls, [], 'sessions 未就绪时不触发')
+  h.sessions.list.set(sessionsReady())
+  assert.deepEqual(h.calls, ['ws-def'])
+  h.sessions.list.set(sessionsReady()) // 快照再抖动不重钉
+  assert.deepEqual(h.calls, ['ws-def'])
+})
+
+test('启动钉子：default 晚到时，dsh 兜底开在别处的空白会话被改钉', () => {
+  const h = bootPinHarness()
+  h.workspaces.list.set({ phase: 'ready', items: [wsApp], archivedSessionIds: [] })
+  h.sessions.list.set(sessionsReady({ ids: ['b1'], byId: { b1: { id: 'b1', blank: true } }, current: 'b1' }))
+  assert.deepEqual(h.calls, [], 'default 尚未 ensure 出来时不触发')
+  h.workspaces.list.set({ phase: 'ready', items: [wsApp, wsDefault], archivedSessionIds: [] })
+  assert.deepEqual(h.calls, ['ws-def'])
+})
+
+test('启动钉子：用户已在真实会话（非 blank）上时不动', () => {
+  const h = bootPinHarness()
+  h.workspaces.list.set({ phase: 'ready', items: [wsApp, wsDefault], archivedSessionIds: [] })
+  h.sessions.list.set(sessionsReady({ ids: ['r1'], byId: { r1: { id: 'r1', blank: false } }, current: 'r1' }))
+  assert.deepEqual(h.calls, [])
+})
+
+test('启动钉子：当前会话已在 default 工作区内时不重钉', () => {
+  const h = bootPinHarness()
+  h.workspaces.list.set({ phase: 'ready', items: [wsApp, wsDefault], archivedSessionIds: [] })
+  h.sessions.list.set(sessionsReady({ ids: ['d1'], byId: { d1: { id: 'd1', blank: true } }, current: 'd1' }))
+  assert.deepEqual(h.calls, [])
+})
+
+test('启动钉子：default 一直缺失（服务端 ensure 失败）时退化为 dsh 原生行为', () => {
+  const h = bootPinHarness()
+  h.workspaces.list.set({ phase: 'ready', items: [wsApp], archivedSessionIds: [] })
+  h.sessions.list.set(sessionsReady())
+  assert.deepEqual(h.calls, [])
 })
 
 // ---------------------------------------------------------------------------
@@ -355,4 +444,82 @@ test('下次运行相对时间：过期/缺失返回 null，其余分档', () =>
 test('format: 命中替换、缺失参数落空串', () => {
   assert.equal(pureFns.format('{n} 分钟', { n: 5 }), '5 分钟')
   assert.equal(pureFns.format('{a}-{b}', { a: 1 }), '1-')
+})
+
+// ---------------------------------------------------------------------------
+// 项目模式入口锚定（placeToggleHost，logo 行对账）
+// ---------------------------------------------------------------------------
+
+/** 极简 DOM 桩：children 数组维护顺序，支持 insertBefore/appendChild 与兄弟/父子关系。 */
+function mkNode(tag) {
+  return {
+    tag,
+    parentElement: null,
+    children: [],
+    get lastElementChild() { return this.children[this.children.length - 1] ?? null },
+    get nextElementSibling() {
+      if (this.parentElement === null) return null
+      const siblings = this.parentElement.children
+      return siblings[siblings.indexOf(this) + 1] ?? null
+    },
+    get previousElementSibling() {
+      if (this.parentElement === null) return null
+      const siblings = this.parentElement.children
+      return siblings[siblings.indexOf(this) - 1] ?? null
+    },
+    insertBefore(node, ref) {
+      if (ref !== null && ref.parentElement !== this) throw new Error('ref 不在本节点下')
+      if (node.parentElement !== null) {
+        const old = node.parentElement.children
+        old.splice(old.indexOf(node), 1)
+      }
+      const at = ref === null ? this.children.length : this.children.indexOf(ref)
+      this.children.splice(at, 0, node)
+      node.parentElement = this
+    },
+    appendChild(node) { this.insertBefore(node, null) },
+  }
+}
+
+const tagsOf = (row) => row.children.map((n) => n.tag)
+
+test('placeToggleHost: 首次挂载插到收起按钮之前（品牌之后）；重复对账不搬动', () => {
+  const row = mkNode('logoRow'), brand = mkNode('brand'), toggle = mkNode('toggle')
+  row.appendChild(brand); row.appendChild(toggle)
+  const host = mkNode('host')
+  pureFns.placeToggleHost(row, host)
+  assert.deepEqual(tagsOf(row), ['brand', 'host', 'toggle'])
+  pureFns.placeToggleHost(row, host) // 已在位：幂等
+  assert.deepEqual(tagsOf(row), ['brand', 'host', 'toggle'])
+})
+
+test('placeToggleHost: 空行退化为 appendChild', () => {
+  const row = mkNode('logoRow'), host = mkNode('host')
+  pureFns.placeToggleHost(row, host)
+  assert.deepEqual(tagsOf(row), ['host'])
+})
+
+test('placeToggleHost: 完整复现「收起→展开」——React 重挂品牌把入口顶到小鱼前面后，对账校回原位', () => {
+  const row = mkNode('logoRow'), brand = mkNode('brand'), toggle = mkNode('toggle')
+  const host = mkNode('host')
+  row.appendChild(brand); row.appendChild(toggle)
+  pureFns.placeToggleHost(row, host) // 初始展开态：[brand, host, toggle]
+  // 收起（settle 后品牌被 React 移除）：[host, toggle]；观察器对账仍在位
+  row.children.splice(0, 1); brand.parentElement = null
+  pureFns.placeToggleHost(row, host)
+  assert.deepEqual(tagsOf(row), ['host', 'toggle'])
+  // 展开：React 只认自己的节点，insertBefore(brand, toggle) 把品牌插到外来容器之后
+  row.insertBefore(brand, toggle)
+  assert.deepEqual(tagsOf(row), ['host', 'brand', 'toggle'], '前置条件：未修复时入口被顶到品牌前')
+  // 观察器对账：按锚点回位到收起按钮左侧
+  pureFns.placeToggleHost(row, host)
+  assert.deepEqual(tagsOf(row), ['brand', 'host', 'toggle'])
+})
+
+test('placeToggleHost: 入口被挤到收起按钮之后时也回到锚点', () => {
+  const row = mkNode('logoRow'), brand = mkNode('brand'), toggle = mkNode('toggle')
+  const host = mkNode('host')
+  row.appendChild(brand); row.appendChild(toggle); row.appendChild(host)
+  pureFns.placeToggleHost(row, host)
+  assert.deepEqual(tagsOf(row), ['brand', 'host', 'toggle'])
 })

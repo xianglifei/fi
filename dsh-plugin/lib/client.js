@@ -761,10 +761,25 @@ button[class*="_newSession"] { display: none !important; }
 		}
 
 		/**
+		 * 项目模式入口容器在 logo 行内的定位规则：紧贴 dsh 自有子元素的最后
+		 * 一个（收起按钮）之前。展开侧栏时 React 只认自己的节点，重挂品牌按钮
+		 * 会 insertBefore 到收起按钮上，把外来容器顶到品牌（小鱼图标）前面
+		 * ——所以每次对账都要重算锚点并回位，不能只在首次挂载时定位。
+		 */
+		function placeToggleHost(row, node) {
+			let anchor = row.lastElementChild;
+			if (anchor === node) anchor = node.previousElementSibling;
+			if (node.parentElement !== row || node.nextElementSibling !== anchor) {
+				if (anchor !== null) row.insertBefore(node, anchor);
+				else row.appendChild(node);
+			}
+		}
+
+		/**
 		 * 把项目模式入口挂进 dsh 原生 logo 行。logo 行没有对外 slot，只能注入
 		 * 宿主 DOM：在收起按钮前插入容器，经 React portal 渲染按钮（状态仍归
 		 * FiSidebarRegion 管）。React 重渲染可能移除外来节点，观察器负责把同一
-		 * 容器插回（portal 不需要重建）。
+		 * 容器插回（portal 不需要重建），并经 placeToggleHost 校正顺序。
 		 */
 		function useLogoRowToggleHost() {
 			const [host, setHost] = react.useState(null);
@@ -778,11 +793,7 @@ button[class*="_newSession"] { display: none !important; }
 						node = row.querySelector(":scope > .fi-ws-toggle-host") ?? document.createElement("div");
 						node.className = "fi-ws-toggle-host";
 					}
-					if (node.parentElement !== row) {
-						const toggle = row.lastElementChild;
-						if (toggle !== null && toggle !== node) row.insertBefore(node, toggle);
-						else row.appendChild(node);
-					}
+					placeToggleHost(row, node);
 					if (hostRef.current !== node) {
 						hostRef.current = node;
 						setHost(node);
@@ -2087,6 +2098,37 @@ button[class*="_newSession"] { display: none !important; }
 
 			ctx.effect(() => ctx.locale.register(NS, { zh, en }), "fi-sidebar: dictionaries");
 
+			ctx.effect(() => {
+				// 启动钉子：dsh 原生 watchNavigation 在无当前会话时按「最近活动」挑
+				// 初始工作区，冷启动可能落在 Applications 这类历史工作区；fi 的语义是
+				// 每次启动都停在 default 工作区的新任务页。两家并发 connect 时 dsh
+				// 只在 current 仍为空时才 open（见 ui-workspace.reconcile），终态恒为
+				// default，无需抢时序。default 由服务端半层异步 ensure，晚到时等下
+				// 一个快照再钉；期间 dsh 若已兜底在别处开了空白会话，一并改钉。
+				let armed = true;
+				const pin = () => {
+					if (!armed) return;
+					const workspace = workspaces.list.getSnapshot();
+					const sessionList = sessions.list.getSnapshot();
+					if (workspace.phase !== "ready" || sessionList.phase !== "ready") return;
+					const target = workspace.items.find((w) => w.title === DEFAULT_WORKSPACE_TITLE);
+					if (target === undefined) return;
+					const current = sessionList.current;
+					armed = false;
+					// 只在无当前会话，或当前是开在 default 之外的空白会话时出手；
+					// 用户已在真实会话上则不动。
+					if (current !== undefined && (target.sessionIds.includes(current) || sessionList.byId[current]?.blank !== true)) return;
+					uiWorkspace.startSession(target.workspaceId);
+				};
+				const disposeWorkspaces = workspaces.list.subscribe(pin);
+				const disposeSessions = sessions.list.subscribe(pin);
+				pin();
+				return () => {
+					disposeWorkspaces();
+					disposeSessions();
+				};
+			}, "fi-sidebar: boot into default workspace");
+
 			// Host 内容搜索（SQLite FTS 全文搜会话消息）。仿 dsh ui-workspace 的
 			// Result 解包：服务层返回 {ok,value}/{ok,error}，UI 侧统一成 Promise。
 			const searchSessions = async (query, signal) => {
@@ -2121,6 +2163,15 @@ button[class*="_newSession"] { display: none !important; }
 				inject: () => ({ startNewTask, startNewTaskIn, openSession, searchSessions, searchResultLimit: sessions.searchResultLimit }),
 				locale: NS,
 			}, FiSidebarRegion));
+
+			// 去掉 logo 行的「deepseek HARNESS」文字标。sidebar.brand.name 是
+			// single 槽位（官方约定可替换，文字只是 shell 的 fallback）：注册空
+			// 渲染即整块接管，小鱼图标（brand.mark）与收起按钮不受影响，文字
+			// 也不会再进无障碍树（区别于 CSS 隐藏）。
+			ctx.slots.inject("sidebar.brand.name", () => ctx.slots.register({
+				name: "sidebar.brand.name",
+				priority: -1,
+			}, () => null));
 		}
 		//#endregion
 

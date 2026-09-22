@@ -1,10 +1,12 @@
 // E2E 冒烟：隔离环境启动完整应用（Electron 壳 + 独立 DSH_HOME），
 // 经 CDP 远程调试驱动真实页面，验证各版本核心功能链路。
 // 覆盖：0.1 壳（spawn/URL/外链策略面/崩溃重启/退出回收）、0.2 插件装载 +
-// 文件桥、0.3 插件客户端半层、0.5 cron IPC 全链路（CRUD/上限/校验/落盘）。
+// 文件桥、0.3 插件客户端半层、0.5 cron IPC 全链路（CRUD/上限/校验/落盘）、
+// 0.5.2 启动钉子（冷启动固定 default 工作区，预置更新的 Applications 工作区复现退化）、
+// 0.6 项目模式入口锚定（收起/展开回位）、0.7 品牌文字标移除（logo 行只剩图标）。
 // 运行：node tests/e2e-smoke.mjs  （会在屏幕上短暂弹出应用窗口）
 import { spawn, execSync } from 'node:child_process'
-import { mkdir, mkdtemp, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, realpath, rm, stat, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
@@ -33,6 +35,35 @@ await symlink(join(fsRoot, 'no-such-target'), join(fsRoot, 'link-broken'))
 const dshHome = await mkdtemp(join(tmpdir(), 'fi-e2e-home-'))
 const userData = await mkdtemp(join(tmpdir(), 'fi-e2e-userdata-'))
 console.log(`[e2e] DSH_HOME=${dshHome}\n[e2e] FI_USER_DATA_DIR=${userData}`)
+
+// --- 预置工作区存储：复现「冷启动落在最近活动工作区」的退化场景 ---
+// dsh 的 recentWorkspace 对无会话工作区按 createdAt 排序，因此无需伪造会话文件：
+// 让 Applications 比 default 新即可让它成为 dsh 原生逻辑的选择；default 交给
+// 服务端半层 ensure 幂等复用（同规范化 path 不重建，createdAt 保留预置值）。
+// 路径必须写 realpath：macOS 的 /var 是 /private/var 的符号链接，dsh 按规范化
+// 路径登记，符号链接路径会让 ensure 误判为不同目录另建 default（新 createdAt
+// 反超 Applications，场景失效）。
+const dshHomeReal = await realpath(dshHome)
+const seededAt = (offsetMs) => new Date(Date.now() - offsetMs).toISOString()
+await mkdir(join(dshHomeReal, 'e2e-applications'), { recursive: true })
+await mkdir(join(dshHomeReal, 'workspace-default'), { recursive: true })
+await mkdir(join(dshHomeReal, 'storages'), { recursive: true })
+await writeFile(join(dshHomeReal, 'storages', 'workspace.json'), JSON.stringify({
+  unit: { name: 'workspace', version: 2 },
+  global: { initialized: true, workspaceIds: ['ws-seed-app', 'ws-seed-default'], archivedSessionIds: [] },
+  tables: {
+    workspaces: {
+      'ws-seed-app': {
+        path: join(dshHomeReal, 'e2e-applications'), title: 'Applications',
+        sessionIds: [], createdAt: seededAt(60_000), updatedAt: seededAt(60_000),
+      },
+      'ws-seed-default': {
+        path: join(dshHomeReal, 'workspace-default'), title: 'default',
+        sessionIds: [], createdAt: seededAt(3_600_000), updatedAt: seededAt(3_600_000),
+      },
+    },
+  },
+}))
 
 const app = spawn('pnpm', ['exec', 'electron', `--remote-debugging-port=${DEBUG_PORT}`, '.'], {
   cwd: repoRoot,
@@ -130,6 +161,48 @@ try {
   let wsDefaultOk = false
   try { const st = await stat(wsDefault); wsDefaultOk = st.isDirectory() } catch { /* not yet */ }
   check('0.2 插件：服务端半层创建 ~/.dsh/workspace-default（DSH_HOME 隔离）', wsDefaultOk, wsDefault)
+
+  // --- 0.5.2 启动钉子：冷启动初始会话固定 default 工作区 ---
+  // 预置存储里 Applications 比 default「新」，dsh 原生 recentWorkspace 会选它；
+  // 页面文本是最稳的信号：新任务页/输入框下方显示当前工作区名，而 fi 普通
+  // 模式侧栏的 default 行不带工作区名——修复前页面不会出现「default」字样。
+  await sleep(2000)
+  const bootText = await evaluate('document.body.innerText')
+  check('0.5.2 启动钉子：冷启动初始会话钉在 default（而非最近活动的 Applications）',
+    bootText.includes('default') && !bootText.includes('Applications'),
+    JSON.stringify(bootText.slice(0, 160)))
+
+  // --- 0.6 项目模式入口锚定：收起→展开后仍回到小鱼图标与收起按钮之间 ---
+  // React 展开侧栏时重挂品牌按钮（insertBefore 到收起按钮上），会把 fi 注入
+  // 的外来容器顶到行首；观察器对账须把它搬回锚点。收起 settle 为 150ms。
+  const logoOrder = () => evaluate(`(() => {
+    const row = document.querySelector('[class*="_logoRow"]');
+    if (row === null) return null;
+    return [...row.children].map((el) => (el.classList.contains('fi-ws-toggle-host') ? 'host' : /_brand/.test(el.className) ? 'brand' : 'other'));
+  })()`)
+  const orderInitially = await logoOrder()
+  check('0.6 入口锚定：初始位置在品牌（小鱼）之后', orderInitially !== null && orderInitially[0] === 'brand' && orderInitially.includes('host'),
+    JSON.stringify(orderInitially))
+  const toggleSel = '[class*="_logoRow"] [class*="_toggle"]:not([class*="fi-ws-toggle"])'
+  await evaluate(`document.querySelector(${JSON.stringify(toggleSel)}).click()`) // 收起
+  await sleep(600)
+  await evaluate(`document.querySelector(${JSON.stringify(toggleSel)}).click()`) // 展开
+  await sleep(600)
+  const orderAfter = await logoOrder()
+  check('0.6 入口锚定：收起再展开后入口仍在小鱼图标之后、收起按钮之前',
+    orderAfter !== null && orderAfter[0] === 'brand' && orderAfter[orderAfter.length - 2] === 'host' && orderAfter[orderAfter.length - 1] === 'other',
+    JSON.stringify(orderAfter))
+
+  // --- 0.7 品牌文字标：logo 行只剩小鱼图标、项目模式入口、收起按钮 ---
+  const brandInfo = await evaluate(`(() => {
+    const row = document.querySelector('[class*="_logoRow"]');
+    if (row === null) return null;
+    const brand = row.querySelector('[class*="_brand"]');
+    return { text: row.innerText.trim(), hasFish: brand !== null && brand.querySelector('svg, img') !== null };
+  })()`)
+  check('0.7 品牌文字：logo 行不再显示「deepseek/HARNESS」文字，小鱼图标保留',
+    brandInfo !== null && brandInfo.text === '' && brandInfo.hasFish === true,
+    JSON.stringify(brandInfo))
 
   // --- 0.5 cron IPC 全链路 ---
   const empty = await evaluate('window.fi.cron.list()')
