@@ -33,6 +33,8 @@ Electron main
 
 **独立 profile**：fi 用自己的 `~/.dsh/profiles/fi`（内置 web 模板初始化，只有 `dsh-base + dsh-web-app` 两个基础 bundle），你在浏览器版 `dsh web` profile 里装的插件（如 peak-hours、whale-widget）不会进 fi；反过来想给 fi 单独装插件，执行 `dsh plugin --profile fi add <package>`。会话历史、设置、API 凭据在 `~/.dsh` 家目录层共享，不受 profile 影响。
 
+**窗口标题品牌**：dsh 页面把 `document.title` 设为「DeepSeek Harness」（任务态「任务标题 - DeepSeek Harness」），Electron 默认将其镜像为原生窗口标题；主进程在 `page-title-updated` 拦截改写（`src/main/window.ts`），标题栏显示「fi」/「任务标题 - fi」（同源预览弹窗同样处理），不含品牌字样的标题原样放行。仅影响标题栏，页面内与浏览器直开 dsh 的行为不变。
+
 **侧栏改版插件（`dsh-plugin/`）**：fi 的侧栏 UI（新建任务/搜索/定时任务/插件中心按钮列 + 项目模式入口）由随应用携带的 dsh 插件 `fi-sidebar` 实现，启动时自动 `dsh plugin --profile fi add link:` 进 profile（幂等；失败则退回 dsh 原生侧栏）。实现要点：
 
 - 服务端半层启动时确保隐藏的 **default 工作区** 存在（`~/.dsh/workspace-default`，展示标题 `default`）。「新建任务」固定在这个工作区里新建会话；侧栏默认列表（普通模式）默认只展示它的会话（项目任务可用「任务」分隔栏右侧的开关展开，见下方「项目任务显隐」）（单列表、按最近更新倒序，可见性规则与 dsh 一致：排除子代理/已归档行，blank 行只保留当前那条）。用户不需要感知工作区概念。冷启动的初始会话同样钉在这里：dsh 原生逻辑会选「最近活动」的工作区（可能是近期用过的项目文件夹），客户端半层在启动快照就绪时单次改钉 default（default 晚到则等它出现再钉；用户已停在真实会话上时不打扰），ensure 失败时退化为 dsh 原生行为。

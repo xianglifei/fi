@@ -27,6 +27,22 @@ function isInternalUrl(url: string): boolean {
   }
 }
 
+// dsh's web UI brands its pages via document.title ("DeepSeek Harness" /
+// "<task> - DeepSeek Harness"), which Electron mirrors into the native
+// window title. Rewritten here so the shell brands itself as fi instead
+// ("fi" / "<task> - fi"); titles without the brand pass through untouched.
+const DSH_BRAND = 'DeepSeek Harness'
+
+function retitleToFi(win: BrowserWindow): void {
+  win.on('page-title-updated', (event, title) => {
+    if (!title.includes(DSH_BRAND)) return
+    event.preventDefault() // or Electron overwrites setTitle with the page title
+    const rewritten = title.split(DSH_BRAND).join('fi')
+    if (process.env.FI_TITLE_TRACE !== undefined) console.log(`[fi] title: ${JSON.stringify(rewritten)}`)
+    win.setTitle(rewritten)
+  })
+}
+
 export function createMainWindow(): BrowserWindow {
   // Dedicated persistent partition: dsh's 30-day auth cookie and the web
   // app's localStorage live here, separate from any browser profile.
@@ -53,6 +69,7 @@ export function createMainWindow(): BrowserWindow {
     },
   })
   win.once('ready-to-show', () => win.show())
+  retitleToFi(win)
 
   // window.open: same-origin (attachment previews etc.) opens a small popup
   // sharing the auth session; anything external goes to the system browser.
@@ -70,6 +87,7 @@ export function createMainWindow(): BrowserWindow {
         },
       })
       hardenForExternalLinks(popup.webContents)
+      retitleToFi(popup)
       popup.once('ready-to-show', () => popup.show())
       void popup.loadURL(url)
     } else if (/^https?:/i.test(url)) {

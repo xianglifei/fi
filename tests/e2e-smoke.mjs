@@ -4,7 +4,8 @@
 // 文件桥、0.3 插件客户端半层、0.5 cron IPC 全链路（CRUD/上限/校验/落盘）、
 // 0.5.2 启动钉子（冷启动固定 default 工作区，预置更新的 Applications 工作区复现退化）、
 // 0.6 项目模式入口锚定（收起/展开回位）、0.7 品牌文字标移除（logo 行只剩图标）、
-// 0.8 选区引用（选中→悬浮菜单→chip→发送合并引用块）。
+// 0.8 选区引用（选中→悬浮菜单→chip→发送合并引用块）、0.9 窗口标题品牌
+// （原生标题 DeepSeek Harness → fi，任务态「任务标题 - fi」）。
 // 运行：node tests/e2e-smoke.mjs  （会在屏幕上短暂弹出应用窗口）
 import { spawn, execSync } from 'node:child_process'
 import { mkdir, mkdtemp, readFile, realpath, rm, stat, symlink, writeFile } from 'node:fs/promises'
@@ -68,7 +69,7 @@ await writeFile(join(dshHomeReal, 'storages', 'workspace.json'), JSON.stringify(
 
 const app = spawn('pnpm', ['exec', 'electron', `--remote-debugging-port=${DEBUG_PORT}`, '.'], {
   cwd: repoRoot,
-  env: { ...process.env, DSH_HOME: dshHome, FI_USER_DATA_DIR: userData },
+  env: { ...process.env, DSH_HOME: dshHome, FI_USER_DATA_DIR: userData, FI_TITLE_TRACE: '1' },
   stdio: ['ignore', 'pipe', 'pipe'],
 })
 const appLog = []
@@ -328,6 +329,25 @@ try {
   await sleep(600)
   const chipAfter = await evaluate(`document.querySelector('[data-fi-quote-dock]') === null`)
   check('0.8 选区引用：发送后 chip 消失（引用即消费）', chipAfter)
+
+  // --- 0.9 窗口标题品牌：原生标题改写 ---
+  // 改写发生在主进程 page-title-updated，CDP 只能看到页面内 document.title
+  // （仍是 dsh 原文），因此经 FI_TITLE_TRACE 打点观测：空闲态应为「fi」，发过
+  // 消息进入任务后应为「任务标题 - fi」，任何 traced 标题不得再含品牌字样。
+  const tracedTitles = () => appLog
+    .flatMap((chunk) => chunk.split('\n'))
+    .map((line) => (line.match(/^\[out\] \[fi\] title: (.+)$/) ?? [])[1])
+    .filter(Boolean)
+    .map((json) => { try { return JSON.parse(json) } catch { return null } })
+    .filter(Boolean)
+  let titles = tracedTitles()
+  for (let i = 0; i < 10 && titles.length === 0; i++) { await sleep(1000); titles = tracedTitles() }
+  check('0.9 窗口标题：空闲态原生标题改写为「fi」（无 DeepSeek Harness 字样）',
+    titles.includes('fi'), JSON.stringify(titles))
+  check('0.9 窗口标题：进入任务后为「任务标题 — fi」',
+    titles.some((t) => t !== 'fi' && /\s[—-]\sfi$/.test(t)), JSON.stringify(titles))
+  check('0.9 窗口标题：所有 traced 标题均不含品牌字样',
+    titles.length > 0 && titles.every((t) => !t.includes('DeepSeek Harness')), JSON.stringify(titles))
 
   // --- 0.5 cron IPC 全链路 ---
   const empty = await evaluate('window.fi.cron.list()')

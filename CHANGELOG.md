@@ -6,6 +6,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- 窗口标题品牌换为「fi」：此前标题栏空闲时显示「DeepSeek Harness」、进入任务后显示「任务标题 - DeepSeek Harness」；现在分别显示「fi」与「任务标题 - fi」，附件预览等弹窗同样处理。只改 fi 窗口的标题栏，页面内容与浏览器直开 dsh 的表现不变。
+
 ## [0.8.0] - 2026-09-22
 
 ### Added
