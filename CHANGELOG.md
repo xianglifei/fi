@@ -6,6 +6,8 @@
 
 ## [Unreleased]
 
+## [0.5.3] - 2026-09-22
+
 ### Fixed
 
 - 首页侧栏顶部四个按钮（新建任务/搜索/定时任务/插件中心）的图标与底部「设置」图标对齐到同一竖线（此前偏右约 8px）。
@@ -85,7 +87,8 @@
 - 流式输出中的关窗确认（preload 监听停止按钮 aria-label「停止生成/Stop generating」，标记失配时静默降级为直接关）。
 - 单实例锁、macOS 标准角色菜单（复制粘贴/缩放/刷新）。
 
-[Unreleased]: https://github.com/xianglifei/fi/compare/v0.5.2...HEAD
+[Unreleased]: https://github.com/xianglifei/fi/compare/v0.5.3...HEAD
+[0.5.3]: https://github.com/xianglifei/fi/compare/v0.5.2...v0.5.3
 [0.5.2]: https://github.com/xianglifei/fi/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/xianglifei/fi/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/xianglifei/fi/compare/v0.4.0...v0.5.0
