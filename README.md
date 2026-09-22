@@ -2,16 +2,48 @@
 
 基于 [dsh](https://github.com/deepseek-ai/deepseek-harness)（DeepSeek Harness）内置 Web 界面的 Electron 桌面套壳。目标：先用最小契约把 `dsh --profile web` 完整装进原生窗口，后续在这个壳上持续二开。
 
-## 使用
+## 功能一览
+
+**桌面壳**
+
+- 原生窗口承载 dsh Web 界面，使用独立 profile（`~/.dsh/profiles/fi`）：与浏览器版互不干扰，会话历史/设置/API 凭据共享
+- dsh 子进程自动托管：随机端口启动、崩溃自动重启、退出干净回收、单实例
+- 桌面化细节：外部链接走系统浏览器、流式输出中关窗确认、窗口标题品牌「fi」
+
+**任务与项目**
+
+- 侧栏四入口：新建任务 / 搜索（⌘K）/ 定时任务 / 插件中心
+- 普通模式任务清单按最近更新排序；项目任务可一键展开，按文件夹分组查看（开关状态跨重启记忆）
+- 项目模式：Finder 式文件浏览器（路径条跳转、右键复制路径/在 Finder 中显示、隐藏项显隐）；在任意文件夹里一键新建任务，会话自动归属该项目
+- ⌘K 搜索：任务标题 + 消息内容全文检索（覆盖全部工作区，含项目文件夹里的会话），回车直达
+
+**自动化与扩展**
+
+- 定时任务：每 N 分钟 / 每天 / 每周 / 每月四种节奏，可指定默认工作区或项目文件夹、次数上限，四档进度筛选，支持立即运行、暂停/恢复、编辑、删除
+- 插件中心：管理 fi 专属插件（一键安装/卸载，两步确认防误触），内置精选推荐位
+
+**对话增强**
+
+- 选区引用：选中任意消息里的文字（用户消息/助手回复/思考过程/工具输出）即可挂为引用，发送时自动并入提示词，输入框保持干净
+
+## 安装
+
+fi 目前以源码方式安装（打包 dmg 见路线图）。前置要求：
+
+- macOS（主要开发与测试平台，Windows/Linux 未充分测试）
+- [Node.js](https://nodejs.org/)（≥ 20）与 [pnpm](https://pnpm.io/)
+- dsh CLI：`npm install -g @deepseek-ai/dsh`
 
 ```bash
+git clone https://github.com/xianglifei/fi.git
+cd fi
 pnpm install
-pnpm dev        # tsup watch + Electron
+pnpm start      # 构建并启动
 ```
 
-要求本机已全局安装 `@deepseek-ai/dsh`（`/opt/homebrew/bin/dsh`）。首次运行会自动 spawn dsh web 服务并打开窗口，认证 cookie 存在独立的 `persist:fi` 分区里，不影响浏览器里的登录。
+首次启动会自动初始化 fi 专属 profile 并打开窗口，认证 cookie 存在独立的 `persist:fi` 分区里，不影响浏览器里的登录。此前用过 dsh（浏览器版或 CLI）的话，登录与 API 凭据直接沿用；第一次接触 dsh 的话，在 fi 的「设置」页配置 DeepSeek API Key 后即可开始使用。
 
-环境变量（都是可选）：
+开发者用 `pnpm dev`（tsup watch + Electron）。环境变量（都是可选）：
 
 - `FI_DSH_BIN` — 指定 dsh 可执行文件路径（默认按 PATH → homebrew → /usr/local 顺序找）
 - `FI_DSH_URL` — 不 spawn，直接连接一个已在运行的 `dsh --profile web`（值带上 `?token=...`）

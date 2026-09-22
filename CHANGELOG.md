@@ -6,6 +6,13 @@
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-09-22
+
+### Changed
+
+- 定版 1.0.0，fi 的第一个正式版：功能集合与 0.9.0 完全一致，本版不含新的代码变更。自 0.1.0 起，fi 已具备完整可日常使用的功能面——原生窗口承载 dsh（独立 profile，与浏览器版互不干扰，会话与凭据共享）、侧栏四入口（新建任务 / 搜索 / 定时任务 / 插件中心）、Finder 式项目模式与「在文件夹里新建任务」、任务清单的项目任务显隐开关、⌘K 标题加消息全文搜索、定时任务面板（四种节奏、执行位置、次数上限、进度筛选）、插件中心（已安装管理与推荐一键装卸）、对话选区引用、流式中关窗确认、外链走系统浏览器。
+- README 新增「功能一览」与面向使用者的安装指引（前置要求、源码安装步骤、首次启动说明）。
+
 ## [0.9.0] - 2026-09-22
 
 ### Changed
@@ -126,7 +133,8 @@
 - 流式输出中的关窗确认（preload 监听停止按钮 aria-label「停止生成/Stop generating」，标记失配时静默降级为直接关）。
 - 单实例锁、macOS 标准角色菜单（复制粘贴/缩放/刷新）。
 
-[Unreleased]: https://github.com/xianglifei/fi/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/xianglifei/fi/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/xianglifei/fi/compare/v0.9.0...v1.0.0
 [0.9.0]: https://github.com/xianglifei/fi/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/xianglifei/fi/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/xianglifei/fi/compare/v0.6.0...v0.7.0
