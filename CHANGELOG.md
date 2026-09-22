@@ -4,7 +4,7 @@
 
 > 维护规则：每次向 GitHub 推送新版本之前，必须先在这里补上对应条目；日常变更先写入 Unreleased，发版时定版。
 
-## [Unreleased]
+## [0.5.1] - 2026-09-22
 
 ### Fixed
 
@@ -67,7 +67,8 @@
 - 流式输出中的关窗确认（preload 监听停止按钮 aria-label「停止生成/Stop generating」，标记失配时静默降级为直接关）。
 - 单实例锁、macOS 标准角色菜单（复制粘贴/缩放/刷新）。
 
-[Unreleased]: https://github.com/xianglifei/fi/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/xianglifei/fi/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/xianglifei/fi/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/xianglifei/fi/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/xianglifei/fi/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/xianglifei/fi/compare/v0.2.0...v0.3.0
