@@ -353,9 +353,16 @@ window.__ModuleLoader__.load({
 button[class*="_newSession"] { display: none !important; }
 .fi-region { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 .fi-region--rail { display: none; }
-.fi-actions { display: flex; flex-direction: column; flex: none; gap: 4px; margin: 2px 2px 10px; }
+/* dsh 页面无全局 border-box 重置：这些行 width:100% 又带横向 padding，
+   content-box 下会把悬浮背景与尾部控件（时间戳/新建任务按钮）顶出容器
+   右缘，文件浏览器的新建任务按钮因此压到侧栏边缘。 */
+.fi-action, .fi-row, .fi-fb-row, .fi-fb-menu-item, .fi-search-row, .fi-cron-row { box-sizing: border-box; }
+/* 左缘对齐 dsh 底部设置行：设置图标起于侧栏 x=18（root 12px 内边距 -
+   triggerRow 负 margin 2 + trigger 左内边距 8）；fi 按钮列以 -2px 外边距
+   抵消区域缩进、8px 左内边距落回同一条竖线。 */
+.fi-actions { display: flex; flex-direction: column; flex: none; gap: 4px; margin: 2px 2px 10px -2px; }
 .fi-action { display: flex; align-items: center; justify-content: flex-start; gap: 7px;
-  width: 100%; height: 36px; padding: 0 12px; border: none; border-radius: 10px;
+  width: 100%; height: 36px; padding: 0 12px 0 8px; border: none; border-radius: 10px;
   background: transparent; color: var(--dsw-alias-label-secondary);
   font: inherit; font-size: 13.5px; font-weight: 500; line-height: 20px;
   cursor: pointer; white-space: nowrap; }
@@ -402,7 +409,9 @@ button[class*="_newSession"] { display: none !important; }
 .fi-loading { color: var(--dsw-alias-label-tertiary); padding: 16px 10px; font-size: 13px; }
 /* 项目模式文件浏览器：路径条 + 当前目录列表（逐层进入，非树形展开） */
 .fi-fb { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-.fi-fb-bar { flex: none; display: flex; align-items: center; gap: 1px; padding: 0 2px 6px; }
+/* 右缘对齐文件夹行的新建任务按钮：列表右 6px + 行右 6px = 12px，
+   与 dsh 侧栏 12px 内联内边距同一节奏；左缘 2px 与行悬浮背景左缘（14px）齐平。 */
+.fi-fb-bar { flex: none; display: flex; align-items: center; gap: 1px; padding: 0 12px 6px 2px; }
 .fi-fb-nav { flex: none; width: 24px; height: 24px; border: none; border-radius: 6px;
   background: transparent; color: var(--dsw-alias-label-secondary); cursor: pointer;
   display: inline-flex; align-items: center; justify-content: center; padding: 0; }
