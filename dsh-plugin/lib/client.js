@@ -213,6 +213,7 @@ window.__ModuleLoader__.load({
 			"cron.validate.prompt": "请填写提示词",
 			"cron.validate.folder": "请选择项目文件夹",
 			"cron.validate.weekdays": "请至少选择一个星期",
+			"cron.validate.interval": "间隔至少为 1",
 			"cron.validate.maxRuns": "次数至少为 1",
 		};
 		const en = {
@@ -335,6 +336,7 @@ window.__ModuleLoader__.load({
 			"cron.validate.prompt": "Enter a prompt",
 			"cron.validate.folder": "Choose a project folder",
 			"cron.validate.weekdays": "Pick at least one weekday",
+			"cron.validate.interval": "Interval must be at least 1",
 			"cron.validate.maxRuns": "Runs must be at least 1",
 		};
 
@@ -686,7 +688,9 @@ button[class*="_newSession"] { display: none !important; }
 					include(s, labelBySession.get(s.id));
 				}
 			}
-			return { rows: rows.slice(0, limit), hasMore: content !== null && (content.hasMore || rows.length > limit) };
+			// 溢出提示不分来源：本地命中超限同样提示（内容搜索未返回/降级期间
+			// 不能静默截断），后端 hasMore 亦透传。
+			return { rows: rows.slice(0, limit), hasMore: (content !== null && content.hasMore) || rows.length > limit };
 		}
 
 		function relativeTime(timestamp, t) {
@@ -1215,6 +1219,9 @@ button[class*="_newSession"] { display: none !important; }
 		 * 单行条目。目录：单击进入，行尾「新建任务」按钮在该文件夹里新建会话；
 		 * 文件：单击用系统默认程序打开。双击（detail>1）忽略，防连点误入子目录。
 		 * 断链等 other 条目灰显不可点（与 dsh 目录浏览一致）。
+		 * 行容器是 div role=button（HTML 不允许 button 内嵌交互元素），行内
+		 * 「新建任务」是真正的 button；键盘激活只认行自身聚焦时（事件目标
+		 * 是内部按钮则交给按钮的默认行为），与 CronRow 同一模式。
 		 */
 		function FbRow({ entry, creating, onEnter, onOpen, onNewTask, onMenu, t }) {
 			if (entry.type === "other") {
@@ -1223,22 +1230,29 @@ button[class*="_newSession"] { display: none !important; }
 			}
 			const isDir = entry.type === "directory";
 			const hidden = entry.name.startsWith(".");
-			return jsx.jsxs("button", {
-				type: "button",
+			const activate = () => (isDir ? onEnter(entry) : onOpen(entry));
+			return jsx.jsxs("div", {
 				className: hidden ? "fi-fb-row fi-fb-row--hidden" : "fi-fb-row",
+				role: "button",
+				tabIndex: 0,
 				onClick: (event) => {
 					if (event.detail > 1) return;
-					if (isDir) onEnter(entry);
-					else onOpen(entry);
+					activate();
+				},
+				onKeyDown: (event) => {
+					if (event.key !== "Enter" && event.key !== " ") return;
+					if (event.target !== event.currentTarget) return;
+					event.preventDefault();
+					activate();
 				},
 				onContextMenu: (event) => onMenu(event, entry),
 				children: [
 					jsx.jsx("span", { className: "fi-fb-row-icon", children:
 						isDir ? icon(ICONS.folderRow, 16) : null }),
 					jsx.jsx("span", { className: "fi-fb-row-name", children: entry.name }),
-					isDir ? jsx.jsx("span", {
+					isDir ? jsx.jsx("button", {
+						type: "button",
 						className: "fi-fb-new",
-						role: "button",
 						"aria-label": t("row.newTaskHere"),
 						title: t("row.newTaskHere"),
 						onClick: (event) => {
@@ -1579,6 +1593,8 @@ button[class*="_newSession"] { display: none !important; }
 				onClick: () => onRowAction("edit", task, null),
 				onKeyDown: (event) => {
 					if (event.key === "Enter" || event.key === " ") {
+						// 聚焦在行内 ⋯ 按钮上时交给按钮自身的键盘行为，不触发行编辑。
+						if (event.target !== event.currentTarget) return;
 						event.preventDefault();
 						onRowAction("edit", task, null);
 					}
@@ -1720,7 +1736,7 @@ button[class*="_newSession"] { display: none !important; }
 				if (targetKind === "folder" && folderPath.trim() === "") return setError(t("cron.validate.folder"));
 				const everyNumber = Math.floor(Number(every));
 				if (!Number.isFinite(everyNumber) || everyNumber < 1) {
-					return setError(t("cron.validate.maxRuns"));
+					return setError(t("cron.validate.interval"));
 				}
 				if (unit === "week" && weekdays.size === 0) return setError(t("cron.validate.weekdays"));
 				const runs = Math.floor(Number(maxRuns));
@@ -1856,7 +1872,8 @@ button[class*="_newSession"] { display: none !important; }
 
 		/**
 		 * 定时任务整页面板：portal 到 body，覆盖侧栏右侧的全部区域。左缘实时跟随
-		 * 侧栏宽度；Esc / 再次点击侧栏按钮 / 任何会话被打开时由父层关闭。
+		 * 侧栏宽度；Esc 分层退出（菜单→关菜单、表单→回列表、列表→关面板），
+		 * 另有再次点击侧栏按钮 / 任何会话被打开时由父层关闭。
 		 * 视图内路由：列表 / 新建 / 编辑（对齐 ZCode「列表 → 整页编辑」的换页模式）。
 		 */
 		function CronPanel({ open, onClose, openSession, t }) {
@@ -1890,14 +1907,19 @@ button[class*="_newSession"] { display: none !important; }
 				return FI_CRON.onChanged((next) => setTasks(Array.isArray(next) ? next : []));
 			}, [open]);
 
+			// Esc 分层退出：行操作菜单打开时只关菜单（菜单自身的 Escape 监听负责）；
+			// 表单视图先取消表单回列表（防误触丢掉填了一半的输入）；列表视图才关面板。
 			react.useEffect(() => {
 				if (!open) return undefined;
 				const onKey = (event) => {
-					if (!event.isComposing && event.key === "Escape") onClose();
+					if (event.isComposing || event.key !== "Escape") return;
+					if (menu !== null) return;
+					if (view.mode !== "list") setView({ mode: "list" });
+					else onClose();
 				};
 				document.addEventListener("keydown", onKey);
 				return () => document.removeEventListener("keydown", onKey);
-			}, [open, onClose]);
+			}, [open, onClose, view.mode, menu]);
 
 			const showNote = (text) => {
 				setNote(text);
@@ -2010,9 +2032,7 @@ button[class*="_newSession"] { display: none !important; }
 			}
 
 			return reactDom.createPortal(
-				jsx.jsxs("div", { className: "fi-cron-root", style: { left: sidebarWidth }, onKeyDown: (event) => {
-					if (event.key === "Escape") onClose();
-				}, children: [
+				jsx.jsxs("div", { className: "fi-cron-root", style: { left: sidebarWidth }, children: [
 					jsx.jsx("div", { className: "fi-cron-scroll", children:
 						jsx.jsxs("div", { className: "fi-cron-inner", children: [
 							view.mode === "list"
