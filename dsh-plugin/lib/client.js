@@ -776,8 +776,14 @@ button[class*="_newSession"] { display: none !important; }
 		 * ——所以每次对账都要重算锚点并回位，不能只在首次挂载时定位。
 		 */
 		function placeToggleHost(row, node) {
+			// 锚点 = 行内最后一个非临时子元素。dsh Tooltip 的气泡 span（role=tooltip）
+			// 悬浮 500ms 后会内联挂进行尾、移开即摘除：把它当锚点会把入口搬过收起按钮，
+			// 按钮跳位会把光标下的元素换成入口（悬浮错位、弹错气泡），气泡随布局
+			// 振荡还会吞掉 mouseleave 使气泡卡死不消失——所以锚点必须跳过它。
 			let anchor = row.lastElementChild;
-			if (anchor === node) anchor = node.previousElementSibling;
+			while (anchor !== null && (anchor === node || anchor.getAttribute("role") === "tooltip")) {
+				anchor = anchor.previousElementSibling;
+			}
 			if (node.parentElement !== row || node.nextElementSibling !== anchor) {
 				if (anchor !== null) row.insertBefore(node, anchor);
 				else row.appendChild(node);

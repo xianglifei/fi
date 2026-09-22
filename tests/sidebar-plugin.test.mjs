@@ -451,11 +451,13 @@ test('format: 命中替换、缺失参数落空串', () => {
 // ---------------------------------------------------------------------------
 
 /** 极简 DOM 桩：children 数组维护顺序，支持 insertBefore/appendChild 与兄弟/父子关系。 */
-function mkNode(tag) {
+function mkNode(tag, attrs = {}) {
   return {
     tag,
+    attrs,
     parentElement: null,
     children: [],
+    getAttribute(name) { return this.attrs[name] ?? null },
     get lastElementChild() { return this.children[this.children.length - 1] ?? null },
     get nextElementSibling() {
       if (this.parentElement === null) return null
@@ -522,4 +524,43 @@ test('placeToggleHost: 入口被挤到收起按钮之后时也回到锚点', () 
   row.appendChild(brand); row.appendChild(toggle); row.appendChild(host)
   pureFns.placeToggleHost(row, host)
   assert.deepEqual(tagsOf(row), ['brand', 'host', 'toggle'])
+})
+
+// dsh Tooltip 的气泡 span（role=tooltip）会临时挂进 logo 行行尾：悬浮收起按钮
+// 500ms 弹出、移开摘除。锚点若把它当「最后一个子元素」，入口会被搬过收起按钮
+// ——按钮跳位、光标下错换成入口、气泡 mouseleave 被吞后卡死（v0.5.3 用户反馈）。
+test('placeToggleHost: 收起按钮的 tooltip 气泡挂进行尾时不当锚点——入口原地不动', () => {
+  const row = mkNode('logoRow'), brand = mkNode('brand'), toggle = mkNode('toggle')
+  const host = mkNode('host'), bubble = mkNode('span', { role: 'tooltip' })
+  row.appendChild(brand); row.appendChild(toggle)
+  pureFns.placeToggleHost(row, host) // [brand, host, toggle]
+  // 悬浮收起按钮 → dsh 气泡内联追加进行尾
+  row.appendChild(bubble)
+  pureFns.placeToggleHost(row, host)
+  assert.deepEqual(tagsOf(row), ['brand', 'host', 'toggle', 'span'], '入口不得搬过收起按钮')
+  // 移开 → 气泡摘除，回到常态
+  row.children.splice(row.children.indexOf(bubble), 1); bubble.parentElement = null
+  pureFns.placeToggleHost(row, host)
+  assert.deepEqual(tagsOf(row), ['brand', 'host', 'toggle'])
+})
+
+test('placeToggleHost: 行尾有气泡时入口仍按收起按钮校位（跳过气泡找锚点）', () => {
+  const row = mkNode('logoRow'), brand = mkNode('brand'), toggle = mkNode('toggle')
+  const host = mkNode('host'), bubble = mkNode('span', { role: 'tooltip' })
+  row.appendChild(brand); row.appendChild(host); row.appendChild(toggle); row.appendChild(bubble)
+  pureFns.placeToggleHost(row, host) // 已在位：幂等，不被气泡带偏
+  assert.deepEqual(tagsOf(row), ['brand', 'host', 'toggle', 'span'])
+  // React 重挂把入口顶到品牌前，行尾还挂着气泡：仍要回到收起按钮之前
+  row.children.splice(row.children.indexOf(host), 1); host.parentElement = null
+  row.insertBefore(host, brand)
+  pureFns.placeToggleHost(row, host)
+  assert.deepEqual(tagsOf(row), ['brand', 'host', 'toggle', 'span'])
+})
+
+test('placeToggleHost: 行里只剩气泡等临时节点时空行退化为 appendChild', () => {
+  const row = mkNode('logoRow'), bubble = mkNode('span', { role: 'tooltip' })
+  const host = mkNode('host')
+  row.appendChild(bubble)
+  pureFns.placeToggleHost(row, host)
+  assert.deepEqual(tagsOf(row), ['span', 'host'])
 })
