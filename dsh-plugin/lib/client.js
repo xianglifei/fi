@@ -43,6 +43,10 @@ window.__ModuleLoader__.load({
 			cronDone: "circle-check",
 			cronFailed: "triangle-alert",
 			cronMore: "ellipsis",
+			quote: "quote",
+			quoteRemove: "x",
+			quoteExpand: "chevron-down",
+			quoteCollapse: "chevron-up",
 		};
 
 		/**
@@ -69,6 +73,11 @@ window.__ModuleLoader__.load({
 			"circle-pause": '<circle cx="12" cy="12" r="10"/><path d="M10 9v6"/><path d="M14 9v6"/>',
 			"triangle-alert": '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
 			"ellipsis": '<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
+			// 选区引用（0.6）：chip/菜单的引用图标与移除、展开指示（lucide 0.544 官方 path）
+			"quote": '<path d="M16 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z"/><path d="M5 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z"/>',
+			"x": '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+			"chevron-down": '<path d="m6 9 6 6 6-6"/>',
+			"chevron-up": '<path d="m18 15-6-6-6 6"/>',
 		};
 
 		function icon(name, size) {
@@ -215,6 +224,18 @@ window.__ModuleLoader__.load({
 			"cron.validate.weekdays": "请至少选择一个星期",
 			"cron.validate.interval": "间隔至少为 1",
 			"cron.validate.maxRuns": "次数至少为 1",
+			"quote.addToTask": "添加到当前任务",
+			"quote.tooLong": "单条引用过长（上限 {n} 字）",
+			"quote.count": "引用 · {n}",
+			"quote.remove": "移除这条引用",
+			"quote.clear": "全部清除",
+			"quote.source": "引用 · {kind}",
+			"quote.kind.user": "用户消息",
+			"quote.kind.assistant": "助手回复",
+			"quote.kind.reasoning": "思考过程",
+			"quote.kind.tool": "工具输出",
+			"quote.limit.count": "引用条数已达上限（{n} 条）",
+			"quote.limit.total": "引用总长度已达上限",
 		};
 		const en = {
 			"newTask": "New Task",
@@ -338,6 +359,18 @@ window.__ModuleLoader__.load({
 			"cron.validate.weekdays": "Pick at least one weekday",
 			"cron.validate.interval": "Interval must be at least 1",
 			"cron.validate.maxRuns": "Runs must be at least 1",
+			"quote.addToTask": "Add to Current Task",
+			"quote.tooLong": "Selection is too long to quote (max {n} characters)",
+			"quote.count": "Quotes · {n}",
+			"quote.remove": "Remove this quote",
+			"quote.clear": "Clear All",
+			"quote.source": "Quote · {kind}",
+			"quote.kind.user": "user message",
+			"quote.kind.assistant": "assistant reply",
+			"quote.kind.reasoning": "reasoning",
+			"quote.kind.tool": "tool output",
+			"quote.limit.count": "Quote limit reached ({n} items)",
+			"quote.limit.total": "Total quote length limit reached",
 		};
 
 		/** 词典键对应的参数：time.* 接 {n}。 */
@@ -606,6 +639,47 @@ button[class*="_newSession"] { display: none !important; }
 .fi-cron-foot { display: flex; justify-content: flex-end; gap: 8px; }
 @keyframes fi-cron-fade { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .fi-cron-root { animation: none; } }
+/* 选区引用（0.6）：对话记录选中文字后的悬浮菜单，portal 到 body。
+   层级压过搜索弹窗(1200)与右键菜单(1000)——它是唯一的瞬时交互层。 */
+.fi-quote-menu { position: fixed; z-index: 1300; display: flex; overflow: hidden;
+  border: 0.5px solid var(--dsw-alias-border-l3); border-radius: 10px;
+  background: var(--dsw-alias-bg-layer-1); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+  font: inherit; font-size: 13px; line-height: 18px; color: var(--dsw-alias-label-primary); }
+.fi-quote-menu-action { display: inline-flex; align-items: center; gap: 6px; border: none;
+  padding: 6px 12px; background: transparent; color: inherit; font: inherit; cursor: pointer;
+  white-space: nowrap; }
+.fi-quote-menu-action:hover { background: var(--dsw-alias-interactive-bg-hover); }
+.fi-quote-menu-action:focus-visible { outline: 2px solid var(--dsw-alias-label-primary); outline-offset: -2px; }
+.fi-quote-menu-note { padding: 6px 12px; color: var(--dsw-alias-state-warn-label, #a86800); }
+/* 引用 chip：挂在输入框卡片正上方（conversation.input.dock 槽位内）。
+   卡片是居中限宽的（对话区还可拖宽），槽位容器是全宽的——左对齐会贴到
+   侧栏；组件运行时读 data-composer-card 的位置把内容对齐到卡片左缘。 */
+.fi-quote-dock { display: flex; flex-direction: column; gap: 4px; padding-bottom: 6px;
+  box-sizing: border-box; }
+.fi-quote-chip { display: inline-flex; align-items: center; gap: 5px; width: fit-content;
+  height: 26px; padding: 0 12px; border: none; border-radius: 999px;
+  background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-secondary);
+  font: inherit; font-size: 12.5px; cursor: pointer; }
+.fi-quote-chip:hover { background: var(--dsw-alias-interactive-bg-active); color: var(--dsw-alias-label-primary); }
+.fi-quote-chip:focus-visible { outline: 2px solid var(--dsw-alias-label-primary); outline-offset: -2px; }
+.fi-quote-note { color: var(--dsw-alias-state-warn-label, #a86800); font-size: 12px; line-height: 17px; padding: 0 2px; }
+.fi-quote-list { display: flex; flex-direction: column; gap: 2px; padding: 4px;
+  border: 0.5px solid var(--dsw-alias-border-l3); border-radius: 10px;
+  background: var(--dsw-alias-bg-layer-1); max-width: min(560px, 100%); }
+.fi-quote-item { display: flex; align-items: flex-start; gap: 6px; padding: 4px 4px 4px 8px;
+  border-radius: 8px; }
+.fi-quote-item:hover { background: var(--dsw-alias-interactive-bg-hover); }
+.fi-quote-item-text { flex: 1; min-width: 0; font-size: 12.5px; line-height: 17px;
+  color: var(--dsw-alias-label-secondary); white-space: pre-wrap; word-break: break-word;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.fi-quote-remove { flex: none; width: 22px; height: 22px; border: none; border-radius: 6px;
+  background: transparent; color: var(--dsw-alias-label-tertiary); cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+.fi-quote-remove:hover { background: var(--dsw-alias-interactive-bg-active); color: var(--dsw-alias-label-primary); }
+.fi-quote-remove:focus-visible { outline: 2px solid var(--dsw-alias-label-primary); outline-offset: -2px; }
+.fi-quote-clear { align-self: flex-end; border: none; background: transparent;
+  color: var(--dsw-alias-label-tertiary); font: inherit; font-size: 12px; cursor: pointer; padding: 2px 6px; }
+.fi-quote-clear:hover { color: var(--dsw-alias-label-primary); }
 `;
 		const CSS_TAG_ID = "fi-sidebar/sidebar.css";
 		if (typeof document !== "undefined" && document.querySelector(`style[data-plugin-css="${CSS_TAG_ID}"]`) === null) {
@@ -1033,7 +1107,7 @@ function ActionButton({ label, icon: iconName, onClick, pressed, current }) {
 		 * usePanelInfo / useSessionPendingInteraction 是槽位宿主通过 provideRoot
 		 * 下发的全局 hook；t 绑定本注册的 fiSidebar 词典。
 		 */
-		function FiSidebarRegion({ wide, expandSidebar, startNewTask, startNewTaskIn, openSession, searchSessions, searchResultLimit, useSessions, useWorkspaces, usePanelInfo, useSessionPendingInteraction, t }) {
+		function FiSidebarRegion({ wide, expandSidebar, startNewTask, startNewTaskIn, openSession, searchSessions, searchResultLimit, useSessions, useWorkspaces, usePanelInfo, useSessionPendingInteraction, quoteProbe, t }) {
 			const [mode, setMode] = react.useState(() => {
 				try {
 					return window.localStorage.getItem(MODE_STORAGE_KEY) === "project" ? "project" : "normal";
@@ -1113,6 +1187,25 @@ function ActionButton({ label, icon: iconName, onClick, pressed, current }) {
 				t,
 			});
 
+			// 选区引用：右面板占用时无对话页，不监听；probe 由 apply 注入（探测
+			// sendSession 补丁）。portal 到 body，折叠 rail 下同样可用。
+			const probe = react.useCallback(() => (typeof quoteProbe === "function" ? quoteProbe() : false), [quoteProbe]);
+			const addQuote = react.useCallback((snap) => {
+				const sessionId = sessions.current;
+				if (typeof sessionId !== "string" || snap.text === null || snap.kind === null) return;
+				quoteStore.add(sessionId, makeQuote(
+					snap.text,
+					snap.kind,
+					format(t("quote.source"), { kind: t(`quote.kind.${snap.kind}`) }),
+				));
+			}, [sessions, t]);
+			const quoteTooltip = jsx.jsx(QuoteSelectionTooltip, {
+				enabled: !panelActive && sessions.current !== undefined,
+				probe,
+				onAdd: addQuote,
+				t,
+			});
+
 			if (!wide) {
 				// 折叠 rail：只留搜索入口，点按展开侧栏（对齐 dsh 原 rail 行为）。
 				return jsx.jsxs("div", {
@@ -1127,6 +1220,7 @@ function ActionButton({ label, icon: iconName, onClick, pressed, current }) {
 						}),
 						searchDialog,
 						cronPanel,
+						quoteTooltip,
 					],
 				});
 			}
@@ -1146,6 +1240,8 @@ function ActionButton({ label, icon: iconName, onClick, pressed, current }) {
 						toggleHost,
 					)
 					: null,
+					// 选区引用 tooltip 两种模式都要挂（项目模式下对话页仍然可见）
+					quoteTooltip,
 				// 项目模式：logo 行以下整体切换为文件浏览器；普通模式：按钮列 + 任务列表
 				mode === "project"
 					? jsx.jsx(FileBrowser, { startNewTaskIn, t })
@@ -2109,6 +2205,484 @@ function ActionButton({ label, icon: iconName, onClick, pressed, current }) {
 		}
 		//#endregion
 
+		//#region quote-selection
+		/**
+		 * 选区引用（对齐 ZCode 的 Conversation Selection）：对话记录里选中文字 →
+		 * 悬浮「添加到当前任务」→ 引用 chip 挂在输入框上方（conversation.input.dock
+		 * 槽位）→ 发送时把引用拼成 markdown 引用块追加到提示词尾部，输入框始终保持
+		 * 干净。composer 的发送出口只有 ConversationController.sendSession 一个，
+		 * 且 InputHub 每次调用都动态解析服务实例——在实例上包一层完成合并；dsh 改版
+		 * 导致补丁打不上时整个功能静默隐藏（菜单不出现，与「契约失效退回原生」的
+		 * 既有策略一致）。
+		 */
+		const QUOTE_LIMITS = { single: 8000, count: 8, total: 16000 };
+
+		/**
+		 * dsh 对话流 kind（data-chat-flow-kind）→ 引用来源分类；未列出的流不可
+		 * 引用。注意助手的流式回复是 assistant-step（step 投影为 step），纯
+		 * assistant 只出现在中断边界等合成节点——漏掉它会让「在 AI 回答上选字」
+		 * 整条失效。reasoning/tool 块渲染在 assistant-step 内部（无独立流项），
+		 * 同样落进 assistant；独立的 tool-call / tool-result 流项归 tool。
+		 */
+		const QUOTE_FLOW_KINDS = {
+			user: "user",
+			steering: "user",
+			assistant: "assistant",
+			"assistant-step": "assistant",
+			step: "assistant",
+			reasoning: "reasoning",
+			"tool-call": "tool",
+			"tool-result": "tool",
+		};
+
+		/** 选区端点落在这些控件里就不算正文选区（contenteditable 即 composer 本体）。 */
+		const QUOTE_EXCLUDED_SELECTOR = [
+			"button", "input", "textarea", "select",
+			"[contenteditable]", "[role='button']", "[role='menu']", "[role='dialog']",
+			"[data-composer-chip]", "[data-fi-quote-tooltip]", "[data-fi-quote-dock]",
+		].join(",");
+
+		/**
+		 * 选区资格审查（规则对齐 ZCode guardConversationSelectionCandidate）：
+		 * 同一条对话流内、非控件端点、受支持的流类型、文本非空且有布局矩形，
+		 * 全过才弹菜单；超单条上限的弹只读提示而非直接消失。
+		 */
+		function quoteGuardCandidate(input) {
+			if (!input.enabled || !input.sameFlow || !input.insideTimeline || input.excluded
+				|| !input.supportedKind || !input.text || !input.hasLayout) return "ineligible";
+			return input.text.length > QUOTE_LIMITS.single ? "single-limit" : "eligible";
+		}
+
+		function quoteDedupeKey(quote) {
+			return `${quote.kind}\0${quote.text}`;
+		}
+
+		/**
+		 * 追加一条引用（对齐 ZCode appendConversationSelectionReference）：去重
+		 * （同类型同文本）、条数与总长上限；重复添加按成功处理不重复入列。
+		 */
+		function appendQuote(current, quote) {
+			if (quote.text.length > QUOTE_LIMITS.single) return { ok: false, reason: "single" };
+			const key = quoteDedupeKey(quote);
+			if (current.some((item) => quoteDedupeKey(item) === key)) {
+				return { ok: true, quotes: current, duplicate: true };
+			}
+			if (current.length >= QUOTE_LIMITS.count) return { ok: false, reason: "count" };
+			const totalLength = current.reduce((sum, item) => sum + item.text.length, 0);
+			if (totalLength + quote.text.length > QUOTE_LIMITS.total) return { ok: false, reason: "total" };
+			return { ok: true, quotes: [...current, quote], duplicate: false };
+		}
+
+		/** 发送失败回滚时把取走的引用并回（先取走的在前），按同一套上限收口。 */
+		function mergeQuoteLists(primary, extra) {
+			const merged = [];
+			const seen = new Set();
+			for (const quote of [...primary, ...extra]) {
+				const key = quoteDedupeKey(quote);
+				if (seen.has(key)) continue;
+				seen.add(key);
+				const totalLength = merged.reduce((sum, item) => sum + item.text.length, 0);
+				if (merged.length >= QUOTE_LIMITS.count
+					|| totalLength + quote.text.length > QUOTE_LIMITS.total) break;
+				merged.push(quote);
+			}
+			return merged;
+		}
+
+		/**
+		 * 引用块（模型可见形态）：markdown 引用块 + 来源标注头。dsh 的历史渲染
+		 * 会把它显示为 blockquote——与 ZCode 不同，fi 无法重渲染宿主历史行来隐藏
+		 * 尾块，干脆让它以原生引用块的样子可见，用户与模型都读得清楚。
+		 */
+		function buildQuoteBlock(quotes) {
+			const parts = quotes.map((quote) => {
+				const body = quote.text.split("\n").map((line) => (line.trim() === "" ? ">" : `> ${line}`));
+				return [`> 【${quote.sourceLabel}】`, ...body].join("\n");
+			});
+			return parts.join("\n\n");
+		}
+
+		function appendQuoteBlock(text, quotes) {
+			if (quotes.length === 0) return String(text ?? "");
+			const block = buildQuoteBlock(quotes);
+			const base = String(text ?? "");
+			return base === "" ? block : `${base}\n\n${block}`;
+		}
+
+		/**
+		 * 引用池：module 级按会话分桶（对齐 ZCode 的模块级 Map，不进 React 状态，
+		 * 组件经订阅读取）。note 是「上次添加失败的原因」，在 chip 区提示一行，
+		 * 下次成功添加/删除/清空即消。
+		 */
+		function createQuoteStore() {
+			const EMPTY = { quotes: [], note: null };
+			const bySession = new Map();
+			const listeners = new Set();
+			const emit = () => {
+				for (const fn of [...listeners]) { try { fn(); } catch { /* 订阅方异常不外溢 */ } }
+			};
+			const recordOf = (sessionId) => bySession.get(sessionId) ?? EMPTY;
+			const commit = (sessionId, record) => {
+				if (record.quotes.length === 0 && record.note === null) bySession.delete(sessionId);
+				else bySession.set(sessionId, record);
+				emit();
+			};
+			return {
+				subscribe(fn) { listeners.add(fn); return () => { listeners.delete(fn); }; },
+				record: recordOf,
+				add(sessionId, quote) {
+					const current = recordOf(sessionId);
+					const result = appendQuote(current.quotes, quote);
+					if (result.ok) commit(sessionId, { quotes: result.quotes, note: null });
+					else commit(sessionId, { quotes: current.quotes, note: result.reason });
+					return result;
+				},
+				remove(sessionId, quoteId) {
+					commit(sessionId, { quotes: recordOf(sessionId).quotes.filter((q) => q.id !== quoteId), note: null });
+				},
+				clear(sessionId) { commit(sessionId, EMPTY); },
+				/** 取走并清空（发送即消费；无引用时不动桶，避免无谓通知）。 */
+				take(sessionId) {
+					const quotes = recordOf(sessionId).quotes;
+					if (quotes.length > 0) commit(sessionId, EMPTY);
+					return quotes;
+				},
+				restore(sessionId, quotes) {
+					if (quotes.length === 0) return;
+					const current = recordOf(sessionId);
+					commit(sessionId, { quotes: mergeQuoteLists(quotes, current.quotes), note: null });
+				},
+			};
+		}
+
+		const quoteStore = createQuoteStore();
+
+		let quoteSeq = 0;
+		function makeQuote(text, kind, sourceLabel) {
+			quoteSeq += 1;
+			let id = "";
+			try { id = crypto.randomUUID(); } catch { id = `fi-quote-${Date.now().toString(36)}-${quoteSeq}`; }
+			return { id, text, kind, sourceLabel };
+		}
+
+		// ---- 发送合并：ConversationController.sendSession 实例级补丁 ----
+
+		const QUOTE_PATCH_KEY = "__fiQuoteSendPatch";
+
+		/**
+		 * 从 sendSession 的 session 参数提取会话 id：resident session face 的快照带
+		 * id；拿不到就退回「当前会话」——只有可见会话的 composer 能提交，这个
+		 * 回退在 UI 语义下总是正确的。
+		 */
+		function quoteSessionIdOf(session, sessions) {
+			try {
+				const id = session?.getSnapshot?.()?.id;
+				if (typeof id === "string") return id;
+			} catch { /* fallthrough */ }
+			try {
+				const current = sessions?.list?.getSnapshot?.().current;
+				if (typeof current === "string") return current;
+			} catch { /* fallthrough */ }
+			return null;
+		}
+
+		/** 包一层 sendSession：有引用时先取走、拼块、再调原实现；失败把引用还回去。 */
+		function quoteWrapSendSession(service, sessions) {
+			const original = service.sendSession;
+			const wrapped = function sendSessionWithQuotes(session, text, attachmentIds, mode, signal) {
+				const sessionId = quoteSessionIdOf(session, sessions);
+				const quotes = sessionId === null ? [] : quoteStore.take(sessionId);
+				if (quotes.length === 0) return original.apply(this, arguments);
+				const outcome = original.call(this, session, appendQuoteBlock(text, quotes), attachmentIds, mode, signal);
+				if (outcome !== null && typeof outcome.catch === "function") {
+					// 发送失败（如凭据缺失被 host 拒）时引用随草稿一起回来，chip 不丢。
+					outcome.catch(() => { quoteStore.restore(sessionId, quotes); });
+				}
+				return outcome;
+			};
+			service[QUOTE_PATCH_KEY] = { original, wrapped };
+			service.sendSession = wrapped;
+		}
+
+		/**
+		 * 探测并确保补丁就位。conversation 服务由 dsh 客户端模块在启动时注册，
+		 * 可能晚于本模块——失败可无限重试（一次探测只是两次 Map 查找）。
+		 * @returns {boolean} 补丁是否就位；false = dsh 内部结构已变，功能应隐藏。
+		 */
+		function ensureQuoteSendPatch(ctx, sessions) {
+			let service = null;
+			try { service = ctx.get("conversation") ?? null; } catch { service = null; }
+			if (service === null) {
+				try {
+					const current = sessions?.list?.getSnapshot?.().current;
+					const actx = typeof current === "string" ? sessions?.scope?.(current) : undefined;
+					service = actx?.get?.("conversation") ?? null;
+				} catch { service = null; }
+			}
+			if (service === null || typeof service.sendSession !== "function") return false;
+			const patch = service[QUOTE_PATCH_KEY];
+			if (patch === undefined || service.sendSession !== patch.wrapped) {
+				// 首次包裹，或 dsh 侧把方法指回过别的实现（服务实例被重建等）——重新包。
+				quoteWrapSendSession(service, sessions);
+			}
+			return true;
+		}
+
+		// ---- 选区检查（DOM） ----
+
+		/**
+		 * 把当前 Selection 解析成悬浮菜单快照（对齐 ZCode inspectSelection）：
+		 * null=不弹、error:single=超长提示、否则带选区矩形与文本/流类型。
+		 * 控件门禁只看两个端点——克隆整段 Range 会把 DOM 顺序里夹着的装饰性
+		 * 控件一并带上，据此判断会把合法正文误判成控件选区。
+		 */
+		function inspectQuoteSelection(doc) {
+			// 对话区滚动容器可能有多个实例（预览面板等），任意一个包含选区即可
+			const scrolls = [...doc.querySelectorAll("[data-conversation-scroll]")];
+			const view = scrolls.length === 0 ? null : doc.defaultView ?? null;
+			const selection = view === null ? null : view.getSelection();
+			if (selection === null || selection.isCollapsed || selection.rangeCount !== 1) return null;
+			const range = selection.getRangeAt(0);
+			const startElement = range.startContainer instanceof Element
+				? range.startContainer
+				: range.startContainer?.parentElement ?? null;
+			const endElement = range.endContainer instanceof Element
+				? range.endContainer
+				: range.endContainer?.parentElement ?? null;
+			if (startElement === null || endElement === null) return null;
+			const excluded = Boolean(
+				startElement.closest(QUOTE_EXCLUDED_SELECTOR) || endElement.closest(QUOTE_EXCLUDED_SELECTOR),
+			);
+			const startFlow = startElement.closest("[data-chat-flow-kind]");
+			const endFlow = endElement.closest("[data-chat-flow-kind]");
+			const kind = startFlow === null ? null : QUOTE_FLOW_KINDS[startFlow.getAttribute("data-chat-flow-kind")] ?? null;
+			const text = selection.toString().trim();
+			const rect = range.getBoundingClientRect();
+			const guard = quoteGuardCandidate({
+				enabled: scrolls.length > 0,
+				sameFlow: startFlow !== null && startFlow === endFlow,
+				insideTimeline: startFlow !== null && scrolls.some((scroll) => scroll.contains(startFlow)),
+				excluded,
+				supportedKind: kind !== null,
+				text,
+				hasLayout: rect.width > 0 || rect.height > 0,
+			});
+			if (guard === "ineligible") return null;
+			const position = { center: rect.left + rect.width / 2, top: rect.top, bottom: rect.bottom };
+			if (guard === "single-limit") return { ...position, text: null, kind: null, error: "single" };
+			return { ...position, text, kind, error: null };
+		}
+
+		// ---- 组件 ----
+
+		/** 订阅引用池（快照引用稳定；useSyncExternalStore 缺席时手动订阅等价）。 */
+		function useQuoteRecord(sessionId) {
+			const getSnapshot = react.useMemo(() => () => quoteStore.record(sessionId), [sessionId]);
+			const useExternal = react.useSyncExternalStore;
+			if (useExternal !== undefined) return useExternal(quoteStore.subscribe, getSnapshot);
+			const [value, setValue] = react.useState(getSnapshot);
+			react.useEffect(() => {
+				setValue(getSnapshot());
+				return quoteStore.subscribe(() => setValue(getSnapshot()));
+			}, [getSnapshot]);
+			return value;
+		}
+
+		/**
+		 * 选区悬浮菜单：定位算法对齐 ZCode SelectionActionMenu——选区上方 8px
+		 * 优先、放不下放下方、左右 clamp 到视口 12px 边距，ResizeObserver 跟随
+		 * 自身尺寸重算。onPointerDown/onMouseDown preventDefault：点菜单不能
+		 * 让浏览器折叠选区。
+		 */
+		function QuoteSelectionMenu({ snap, t, onAdd }) {
+			const ref = react.useRef(null);
+			react.useLayoutEffect(() => {
+				const menu = ref.current;
+				if (menu === null) return;
+				const position = () => {
+					const rect = menu.getBoundingClientRect();
+					menu.style.left = `${Math.max(12, Math.min(window.innerWidth - rect.width - 12, snap.center - rect.width / 2))}px`;
+					const preferredTop = snap.top - rect.height - 8 >= 12 ? snap.top - rect.height - 8 : snap.bottom + 8;
+					menu.style.top = `${Math.max(12, Math.min(window.innerHeight - rect.height - 12, preferredTop))}px`;
+				};
+				position();
+				const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(position);
+				observer?.observe(menu);
+				return () => observer?.disconnect();
+			}, [snap]);
+			return jsx.jsx("div", {
+				ref,
+				"data-fi-quote-tooltip": "",
+				className: "fi-quote-menu",
+				style: { left: 12, top: 12 },
+				onPointerDown: (event) => event.preventDefault(),
+				onMouseDown: (event) => event.preventDefault(),
+				children: snap.error === "single"
+					? jsx.jsx("div", { className: "fi-quote-menu-note", children: format(t("quote.tooLong"), { n: QUOTE_LIMITS.single }) })
+					: jsx.jsxs("button", {
+						type: "button",
+						className: "fi-quote-menu-action",
+						"data-fi-quote-action": "add",
+						onClick: onAdd,
+						children: [icon(ICONS.quote, 14), t("quote.addToTask")],
+					}),
+			});
+		}
+
+		/**
+		 * 选区监听（对齐 ZCode useTextSelection）：mouseup/touchend 触发、rAF
+		 * 防抖、Escape/选区折叠/任意滚动/resize 关闭。probe 在产出合法候选时才
+		 * 调用——sendSession 补丁打不上（dsh 改版）时菜单不出现，功能整体隐藏。
+		 */
+		function QuoteSelectionTooltip({ enabled, probe, onAdd, t }) {
+			const [snap, setSnap] = react.useState(null);
+			const frameRef = react.useRef(0);
+			const close = react.useCallback(() => {
+				window.cancelAnimationFrame(frameRef.current);
+				setSnap(null);
+			}, []);
+			react.useEffect(() => {
+				if (!enabled) {
+					close();
+					return;
+				}
+				const schedule = () => {
+					window.cancelAnimationFrame(frameRef.current);
+					frameRef.current = window.requestAnimationFrame(() => {
+						const candidate = inspectQuoteSelection(document);
+						setSnap(candidate !== null && probe() ? candidate : null);
+					});
+				};
+				const onKey = (event) => (event.key === "Escape" ? close() : schedule());
+				const onSelectionChange = () => {
+					if (document.getSelection()?.isCollapsed ?? true) close();
+				};
+				document.addEventListener("mouseup", schedule);
+				document.addEventListener("touchend", schedule, { passive: true });
+				document.addEventListener("keyup", onKey);
+				document.addEventListener("selectionchange", onSelectionChange);
+				document.addEventListener("scroll", close, { passive: true, capture: true });
+				window.addEventListener("resize", close);
+				return () => {
+					window.cancelAnimationFrame(frameRef.current);
+					document.removeEventListener("mouseup", schedule);
+					document.removeEventListener("touchend", schedule);
+					document.removeEventListener("keyup", onKey);
+					document.removeEventListener("selectionchange", onSelectionChange);
+					document.removeEventListener("scroll", close, true);
+					window.removeEventListener("resize", close);
+				};
+			}, [enabled, close, probe]);
+			if (snap === null) return null;
+			return reactDom.createPortal(
+				jsx.jsx(QuoteSelectionMenu, { snap, t, onAdd: () => { onAdd(snap); close(); } }),
+				document.body,
+			);
+		}
+
+		/**
+		 * 引用 chip（conversation.input.dock 槽位，输入框正上方；sessionId 是槽位
+		 * 标准属性）。收起态只显示计数 pill，展开逐条预览（3 行截断）+ 单条移除 +
+		 * 全部清除；note 显示上次添加失败的原因。
+		 *
+		 * 对齐：输入卡片（data-composer-card）居中限宽且可拖宽，槽位容器是全宽
+		 * 的——不对齐 chip 会贴到对话区左缘（第一版就是这样）。这里把内容缩进到
+		 * 卡片左缘，ResizeObserver 跟随卡片宽度变化；找不到卡片时保持原样。
+		 */
+		function QuoteDock({ sessionId, t }) {
+			const translate = typeof t === "function" ? t : (key) => key;
+			const record = useQuoteRecord(sessionId);
+			const [open, setOpen] = react.useState(false);
+			const rootRef = react.useRef(null);
+			react.useEffect(() => { setOpen(false); }, [sessionId]);
+			const hasContent = record.quotes.length > 0 || record.note !== null;
+			react.useEffect(() => {
+				if (!hasContent) return;
+				const el = rootRef.current;
+				if (el === null) return;
+				const findCard = () => {
+					let scope = el.parentElement;
+					for (let i = 0; i < 4 && scope !== null; i++) {
+						const card = scope.querySelector("[data-composer-card]");
+						if (card !== null) return card;
+						scope = scope.parentElement;
+					}
+					return null;
+				};
+				// 反馈式对齐：量 chip 与卡片左缘的实际差值、迭代缩进。挂载瞬间
+				// 对话区布局可能还没 settle（首帧读数即错），靠 rAF 连续收敛到
+				// 稳态；之后的拖拽调宽由 ResizeObserver 兜住。
+				const align = () => {
+					const card = findCard();
+					if (card === null) {
+						el.style.paddingLeft = "";
+						return;
+					}
+					const chip = el.querySelector(".fi-quote-chip");
+					if (chip === null) return;
+					const delta = card.getBoundingClientRect().left - chip.getBoundingClientRect().left;
+					if (Math.abs(delta) <= 1) return;
+					el.style.paddingLeft = `${Math.max(0, parseFloat(el.style.paddingLeft || "0") + delta)}px`;
+				};
+				let frame = 0;
+				let rafId = 0;
+				const tick = () => {
+					align();
+					frame += 1;
+					if (frame < 12) rafId = window.requestAnimationFrame(tick);
+				};
+				tick();
+				const card = findCard();
+				const observer = typeof ResizeObserver === "undefined" || card === null ? null : new ResizeObserver(align);
+				observer?.observe(card);
+				window.addEventListener("resize", align);
+				return () => {
+					window.cancelAnimationFrame(rafId);
+					observer?.disconnect();
+					window.removeEventListener("resize", align);
+				};
+			}, [sessionId, hasContent]);
+			if (typeof sessionId !== "string" || !hasContent) return null;
+			const note = record.note === null ? null
+				: record.note === "single" ? format(translate("quote.tooLong"), { n: QUOTE_LIMITS.single })
+					: record.note === "count" ? format(translate("quote.limit.count"), { n: QUOTE_LIMITS.count })
+						: translate("quote.limit.total");
+			return jsx.jsxs("div", { ref: rootRef, className: "fi-quote-dock", "data-fi-quote-dock": "", children: [
+				jsx.jsxs("button", {
+					type: "button",
+					className: "fi-quote-chip",
+					"aria-expanded": open ? "true" : "false",
+					"data-fi-quote-count": record.quotes.length,
+					onClick: () => setOpen((value) => !value),
+					children: [
+						icon(ICONS.quote, 13),
+						format(translate("quote.count"), { n: record.quotes.length }),
+						icon(open ? ICONS.quoteCollapse : ICONS.quoteExpand, 13),
+					],
+				}),
+				note !== null ? jsx.jsx("div", { className: "fi-quote-note", children: note }) : null,
+				open && record.quotes.length > 0 ? jsx.jsxs("div", { className: "fi-quote-list", children: [
+					...record.quotes.map((quote) => jsx.jsxs("div", { className: "fi-quote-item", children: [
+						jsx.jsx("div", { className: "fi-quote-item-text", title: quote.text, children: quote.text }),
+						jsx.jsx("button", {
+							type: "button",
+							className: "fi-quote-remove",
+							"aria-label": translate("quote.remove"),
+							onClick: () => quoteStore.remove(sessionId, quote.id),
+							children: icon(ICONS.quoteRemove, 13),
+						}),
+					] })),
+					record.quotes.length > 1 ? jsx.jsx("button", {
+						type: "button",
+						className: "fi-quote-clear",
+						onClick: () => quoteStore.clear(sessionId),
+						children: translate("quote.clear"),
+					}) : null,
+				] }) : null,
+			] });
+		}
+		//#endregion
+
 		//#region plugin
 		const inject = ["slots", "locale", "uiWorkspace", "workspaces", "sessions"];
 
@@ -2178,12 +2752,26 @@ function ActionButton({ label, icon: iconName, onClick, pressed, current }) {
 				})
 				.catch((err) => err?.message ?? String(err));
 
+			// 选区引用（0.6）：探测/确保 sendSession 补丁就位。conversation 服务由
+			// dsh 客户端模块注册，可能晚于本模块——probe 在每次合法选区时重试，
+			// 一直失败（dsh 改版）则菜单永不出现，功能整体静默隐藏。
+			const quoteProbe = () => ensureQuoteSendPatch(ctx, sessions);
+
 			ctx.slots.inject("sidebar.workspaces", () => ctx.slots.register({
 				name: "sidebar.workspaces",
 				priority: -1,
-				inject: () => ({ startNewTask, startNewTaskIn, openSession, searchSessions, searchResultLimit: sessions.searchResultLimit }),
+				inject: () => ({ startNewTask, startNewTaskIn, openSession, searchSessions, searchResultLimit: sessions.searchResultLimit, quoteProbe }),
 				locale: NS,
 			}, FiSidebarRegion));
+
+			// 引用 chip 挂进官方输入框上方槽位（list 型，与 todo/queue dock 同列、
+			// 不顶替任何宿主内容）；sessionId 是槽位标准属性。
+			ctx.slots.inject("conversation.input.dock", () => ctx.slots.register({
+				name: "conversation.input.dock",
+				id: "fi-quotes",
+				order: 10,
+				locale: NS,
+			}, QuoteDock));
 
 			// 去掉 logo 行的「deepseek HARNESS」文字标。sidebar.brand.name 是
 			// single 槽位（官方约定可替换，文字只是 shell 的 fallback）：注册空

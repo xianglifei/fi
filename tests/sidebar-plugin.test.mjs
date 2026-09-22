@@ -564,3 +564,212 @@ test('placeToggleHost: 行里只剩气泡等临时节点时空行退化为 appen
   pureFns.placeToggleHost(row, host)
   assert.deepEqual(tagsOf(row), ['span', 'host'])
 })
+
+// ---------------------------------------------------------------------------
+// 0.6 选区引用：guard / 上限与去重 / 引用块序列化 / 引用池 / sendSession 补丁
+// ---------------------------------------------------------------------------
+
+/** 提取 const 声明文本（到行尾分号），供纯函数闭包引用模块常量。 */
+function extractConst(name) {
+  const start = source.indexOf(`const ${name} =`)
+  assert.ok(start >= 0, `源码中找到 const ${name}`)
+  const end = source.indexOf(';', start)
+  return source.slice(start, end + 1)
+}
+
+const quoteFns = new Function(`
+  ${extractConst('QUOTE_LIMITS')}
+  ${extractConst('QUOTE_FLOW_KINDS')}
+  ${extractFn('quoteGuardCandidate')}
+  ${extractFn('quoteDedupeKey')}
+  ${extractFn('appendQuote')}
+  ${extractFn('mergeQuoteLists')}
+  ${extractFn('buildQuoteBlock')}
+  ${extractFn('appendQuoteBlock')}
+  ${extractFn('createQuoteStore')}
+  ${extractFn('quoteSessionIdOf')}
+  ${extractFn('quoteWrapSendSession')}
+  ${extractFn('ensureQuoteSendPatch')}
+  const QUOTE_PATCH_KEY = '__fiQuoteSendPatch';
+  const quoteStore = createQuoteStore();
+  return { QUOTE_LIMITS, QUOTE_FLOW_KINDS, quoteGuardCandidate, appendQuote, mergeQuoteLists, buildQuoteBlock, appendQuoteBlock,
+    createQuoteStore, quoteSessionIdOf, ensureQuoteSendPatch, quoteStore };
+`)()
+
+const GUARD_OK = { enabled: true, sameFlow: true, insideTimeline: true, excluded: false, supportedKind: true, text: 'hi', hasLayout: true }
+
+test('quoteGuardCandidate: 任一条件不满足即 ineligible；七项全过才 eligible', () => {
+  assert.equal(quoteFns.quoteGuardCandidate(GUARD_OK), 'eligible')
+  for (const key of ['enabled', 'sameFlow', 'insideTimeline', 'supportedKind', 'text', 'hasLayout']) {
+    assert.equal(quoteFns.quoteGuardCandidate({ ...GUARD_OK, [key]: key === 'text' ? '' : false }), 'ineligible', key)
+  }
+  assert.equal(quoteFns.quoteGuardCandidate({ ...GUARD_OK, excluded: true }), 'ineligible')
+})
+
+test('quoteGuardCandidate: 超单条上限返回 single-limit（弹只读提示而非消失）', () => {
+  assert.equal(quoteFns.quoteGuardCandidate({ ...GUARD_OK, text: 'a'.repeat(quoteFns.QUOTE_LIMITS.single + 1) }), 'single-limit')
+  assert.equal(quoteFns.quoteGuardCandidate({ ...GUARD_OK, text: 'a'.repeat(quoteFns.QUOTE_LIMITS.single) }), 'eligible')
+})
+
+test('QUOTE_FLOW_KINDS: 助手流式回复（assistant-step/step）必须可引用——真实对话里 AI 回答都是它，漏掉 = 选字不弹菜单', () => {
+  assert.equal(quoteFns.QUOTE_FLOW_KINDS['assistant-step'], 'assistant')
+  assert.equal(quoteFns.QUOTE_FLOW_KINDS.step, 'assistant')
+  assert.equal(quoteFns.QUOTE_FLOW_KINDS.assistant, 'assistant')
+  assert.equal(quoteFns.QUOTE_FLOW_KINDS.user, 'user')
+  assert.equal(quoteFns.QUOTE_FLOW_KINDS.steering, 'user')
+  assert.equal(quoteFns.QUOTE_FLOW_KINDS['tool-call'], 'tool')
+  assert.equal(quoteFns.QUOTE_FLOW_KINDS['tool-result'], 'tool')
+  // 系统性节点不可引用
+  for (const kind of ['turn-process', 'turn-error', 'compaction', 'context', 'command', 'unknown-surface']) {
+    assert.equal(quoteFns.QUOTE_FLOW_KINDS[kind], undefined, kind)
+  }
+})
+
+const mkQuote = (text, kind = 'user', id = text) => ({ id, text, kind, sourceLabel: `引用 · ${kind}` })
+
+test('appendQuote: 去重（同类型同文本）；条数/总长上限；保持添加顺序', () => {
+  const first = quoteFns.appendQuote([], mkQuote('a'))
+  assert.equal(first.ok, true)
+  assert.equal(first.duplicate, false)
+  // 重复添加按成功处理，列表不变
+  const dup = quoteFns.appendQuote(first.quotes, mkQuote('a'))
+  assert.equal(dup.ok, true)
+  assert.equal(dup.duplicate, true)
+  assert.equal(dup.quotes.length, 1)
+  // 同文本不同类型不去重
+  assert.equal(quoteFns.appendQuote(first.quotes, mkQuote('a', 'assistant')).quotes.length, 2)
+  // 条数上限
+  let quotes = []
+  for (let i = 0; i < quoteFns.QUOTE_LIMITS.count; i++) quotes = quoteFns.appendQuote(quotes, mkQuote(`q${i}`)).quotes
+  const over = quoteFns.appendQuote(quotes, mkQuote('overflow'))
+  assert.equal(over.ok, false)
+  assert.equal(over.reason, 'count')
+  // 总长上限（三条各 5000 共 15000，再放 2000 超过 16000；放 100 还装得下）
+  const base = [mkQuote('x'.repeat(5000)), mkQuote('y'.repeat(5000)), mkQuote('w'.repeat(5000))]
+  assert.equal(quoteFns.appendQuote(base, mkQuote('z'.repeat(2000))).reason, 'total')
+  assert.equal(quoteFns.appendQuote(base, mkQuote('short')).ok, true)
+  // 单条超限在入口即拒
+  assert.equal(quoteFns.appendQuote([], mkQuote('a'.repeat(quoteFns.QUOTE_LIMITS.single + 1))).reason, 'single')
+})
+
+test('mergeQuoteLists: 回滚合并去重并按同一套上限收口', () => {
+  const merged = quoteFns.mergeQuoteLists([mkQuote('a'), mkQuote('b')], [mkQuote('a'), mkQuote('c')])
+  assert.deepEqual(merged.map((q) => q.text), ['a', 'b', 'c'])
+  const capped = quoteFns.mergeQuoteLists([], Array.from({ length: 12 }, (_, i) => mkQuote(`q${i}`)))
+  assert.equal(capped.length, quoteFns.QUOTE_LIMITS.count)
+})
+
+test('buildQuoteBlock: 引用块带来源头、逐行前缀、空行占位、多条空行分隔', () => {
+  assert.equal(
+    quoteFns.buildQuoteBlock([mkQuote('第一行\n\n第二行', 'assistant')]),
+    '> 【引用 · assistant】\n> 第一行\n>\n> 第二行',
+  )
+  assert.equal(
+    quoteFns.buildQuoteBlock([mkQuote('a', 'user'), mkQuote('b', 'tool')]),
+    '> 【引用 · user】\n> a\n\n> 【引用 · tool】\n> b',
+  )
+})
+
+test('appendQuoteBlock: 空正文只出引用块；有正文空行衔接；无引用原样返回', () => {
+  assert.equal(quoteFns.appendQuoteBlock('', [mkQuote('a')]), '> 【引用 · user】\n> a')
+  assert.equal(quoteFns.appendQuoteBlock('看看', [mkQuote('a')]), '看看\n\n> 【引用 · user】\n> a')
+  assert.equal(quoteFns.appendQuoteBlock('正文', []), '正文')
+  assert.equal(quoteFns.appendQuoteBlock(undefined, []), '')
+})
+
+test('createQuoteStore: add/remove/clear/take/restore 与失败提示 note', () => {
+  const store = quoteFns.createQuoteStore()
+  assert.deepEqual(store.record('s1'), { quotes: [], note: null })
+  store.add('s1', mkQuote('a'))
+  store.add('s1', mkQuote('b', 'assistant'))
+  assert.equal(store.record('s1').quotes.length, 2)
+  store.remove('s1', 'a')
+  assert.deepEqual(store.record('s1').quotes.map((q) => q.text), ['b'])
+  // 上限失败：列表不动、note 记原因；下次成功添加消掉 note
+  const full = []
+  for (let i = 0; i < quoteFns.QUOTE_LIMITS.count; i++) full.push(mkQuote(`q${i}`))
+  for (const q of full) store.add('s1', q)
+  assert.equal(store.record('s1').note, 'count')
+  store.remove('s1', 'q0')
+  const readd = store.add('s1', mkQuote('re'))
+  assert.equal(readd.ok, true)
+  assert.equal(store.record('s1').note, null)
+  // take：发送即消费；restore：失败回滚
+  const taken = store.take('s1')
+  assert.ok(taken.length > 0)
+  assert.deepEqual(store.record('s1'), { quotes: [], note: null })
+  store.restore('s1', taken)
+  assert.equal(store.record('s1').quotes.length, taken.length)
+  // clear
+  store.clear('s1')
+  assert.deepEqual(store.record('s1'), { quotes: [], note: null })
+})
+
+test('quoteSessionIdOf: session 快照带 id 优先；拿不到回退当前会话；全无则 null', () => {
+  const sessions = { list: { getSnapshot: () => ({ current: 'cur' }) } }
+  assert.equal(quoteFns.quoteSessionIdOf({ getSnapshot: () => ({ id: 's9' }) }, sessions), 's9')
+  assert.equal(quoteFns.quoteSessionIdOf({}, sessions), 'cur')
+  assert.equal(quoteFns.quoteSessionIdOf(null, { list: { getSnapshot: () => ({}) } }), null)
+})
+
+test('ensureQuoteSendPatch: 服务不可达返回 false 不抛异常（dsh 改版时功能隐藏）', () => {
+  const sessions = { list: { getSnapshot: () => ({ current: 's1' }) }, scope: () => undefined }
+  assert.equal(quoteFns.ensureQuoteSendPatch({ get: () => undefined }, sessions), false)
+  assert.equal(quoteFns.ensureQuoteSendPatch({ get: () => { throw new Error('no service') } }, sessions), false)
+  assert.equal(quoteFns.ensureQuoteSendPatch({ get: () => ({ sendSession: 'not a fn' }) }, sessions), false)
+})
+
+test('ensureQuoteSendPatch: 包裹 sendSession——引用拼块后发送、发送即消费、幂等不重复包裹', async () => {
+  const store = quoteFns.quoteStore
+  store.clear('s1')
+  const originals = []
+  const service = { sendSession: async (session, text) => { originals.push(text); return { ok: true, text } } }
+  const ctx = { get: () => service }
+  const sessions = { list: { getSnapshot: () => ({ current: 's1' }) } }
+  assert.equal(quoteFns.ensureQuoteSendPatch(ctx, sessions), true)
+  assert.equal(quoteFns.ensureQuoteSendPatch(ctx, sessions), true) // 幂等
+  store.add('s1', mkQuote('被选中的话', 'assistant'))
+  const outcome = await service.sendSession({ getSnapshot: () => ({ id: 's1' }) }, '看看这段')
+  assert.equal(originals.length, 1)
+  assert.equal(originals[0], '看看这段\n\n> 【引用 · assistant】\n> 被选中的话')
+  assert.equal(outcome.text, originals[0])
+  assert.deepEqual(store.record('s1').quotes, [], '发送即消费，chip 消失')
+  // 无引用时原样透传
+  await service.sendSession({ getSnapshot: () => ({ id: 's1' }) }, '第二条')
+  assert.equal(originals[1], '第二条')
+  // 再次 ensure 仍是同一个包裹（originals 每次恰好一条）
+  quoteFns.ensureQuoteSendPatch(ctx, sessions)
+  await service.sendSession({ getSnapshot: () => ({ id: 's1' }) }, '第三条')
+  assert.equal(originals.length, 3)
+})
+
+test('ensureQuoteSendPatch: 发送失败时引用随草稿回滚（chip 回来）', async () => {
+  const store = quoteFns.quoteStore
+  store.clear('s2')
+  const service = { sendSession: async () => { throw new Error('no credentials') } }
+  quoteFns.ensureQuoteSendPatch({ get: () => service }, { list: { getSnapshot: () => ({ current: 's2' }) } })
+  store.add('s2', mkQuote('要保持的引用', 'user'))
+  await assert.rejects(service.sendSession({ getSnapshot: () => ({ id: 's2' }) }, '发送'))
+  await new Promise((r) => setTimeout(r, 0)) // 等 wrapper 的 catch 微任务跑完
+  assert.deepEqual(store.record('s2').quotes.map((q) => q.text), ['要保持的引用'])
+  store.clear('s2')
+})
+
+test('apply(): 注册 conversation.input.dock 引用 chip 槽位（list 型、id fi-quotes）', () => {
+  const reg = captured.registrations.find((r) => r.options.name === 'conversation.input.dock')
+  assert.ok(reg, '找到 conversation.input.dock 注册')
+  assert.equal(reg.options.id, 'fi-quotes')
+  assert.equal(reg.options.order, 10)
+  assert.equal(typeof reg.component, 'function')
+  assert.ok(captured.slotNames.includes('conversation.input.dock'))
+})
+
+test('quote.kind.* 四类来源与 source/limit 词条在两份词典中齐全', () => {
+  for (const kind of ['user', 'assistant', 'reasoning', 'tool']) {
+    assert.ok(`quote.kind.${kind}` in zh, `zh 缺 quote.kind.${kind}`)
+    assert.ok(`quote.kind.${kind}` in en, `en 缺 quote.kind.${kind}`)
+  }
+  for (const key of ['quote.addToTask', 'quote.tooLong', 'quote.count', 'quote.remove', 'quote.clear', 'quote.source', 'quote.limit.count', 'quote.limit.total']) {
+    assert.ok(key in zh && key in en, `词典缺 ${key}`)
+  }
+})

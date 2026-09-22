@@ -3,7 +3,8 @@
 // 覆盖：0.1 壳（spawn/URL/外链策略面/崩溃重启/退出回收）、0.2 插件装载 +
 // 文件桥、0.3 插件客户端半层、0.5 cron IPC 全链路（CRUD/上限/校验/落盘）、
 // 0.5.2 启动钉子（冷启动固定 default 工作区，预置更新的 Applications 工作区复现退化）、
-// 0.6 项目模式入口锚定（收起/展开回位）、0.7 品牌文字标移除（logo 行只剩图标）。
+// 0.6 项目模式入口锚定（收起/展开回位）、0.7 品牌文字标移除（logo 行只剩图标）、
+// 0.8 选区引用（选中→悬浮菜单→chip→发送合并引用块）。
 // 运行：node tests/e2e-smoke.mjs  （会在屏幕上短暂弹出应用窗口）
 import { spawn, execSync } from 'node:child_process'
 import { mkdir, mkdtemp, readFile, realpath, rm, stat, symlink, writeFile } from 'node:fs/promises'
@@ -203,6 +204,130 @@ try {
   check('0.7 品牌文字：logo 行不再显示「deepseek/HARNESS」文字，小鱼图标保留',
     brandInfo !== null && brandInfo.text === '' && brandInfo.hasFish === true,
     JSON.stringify(brandInfo))
+
+  // --- 0.8 选区引用：选中→悬浮菜单→chip→发送合并 ---
+  // 链路：发一条消息制造可选文本（提交回显是本地同步进会话投影的，凭据缺失
+  // 只会让本轮运行失败、回显仍在）→ 合成选区 + mouseup 触发 fi 选区监听 →
+  // 点「添加到当前任务」→ 引用 chip 应出现在输入框上方（conversation.input.dock
+  // 槽位）→ 发送第二条消息时引用块并入正文。
+  // Lexical 编辑器不认合成 beforeinput，execCommand 也插不进；CDP
+  // Input.insertText 走浏览器真实输入管线，与键盘输入等价。focus 不会搬动
+  // DOM 选区（选区可能还停在消息流上，insertText 会插去那里），必须显式把
+  // 光标坍缩进编辑器末尾。
+  const typeIntoComposer = async (text) => {
+    const focused = await evaluate(`(() => {
+      const el = document.querySelector('[data-composer-seat] [contenteditable="true"]');
+      if (el === null) return false;
+      el.focus();
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      return document.activeElement === el && el.contains(sel.anchorNode);
+    })()`)
+    if (focused !== true) return null
+    await send('Input.insertText', { text })
+    await sleep(300)
+    return evaluate(`document.querySelector('[data-composer-seat] [contenteditable="true"]')?.textContent ?? null`)
+  }
+  // 主按钮随状态换角色（发送/排队/插话/停止），取未禁用的 primary 按钮且排除停止
+  const clickSend = () => evaluate(`(() => {
+    const btn = [...document.querySelectorAll('[data-composer-seat] button')]
+      .find((b) => b.className.includes('primary') && !b.disabled && !/停止|Stop/.test(b.getAttribute('aria-label') ?? ''));
+    if (btn === undefined) return false;
+    btn.click();
+    return true;
+  })()`)
+  const pollFor = async (expression, timeoutMs = 20000) => {
+    for (let i = 0; i < Math.ceil(timeoutMs / 500); i++) {
+      await sleep(500)
+      if (await evaluate(expression) === true) return true
+    }
+    return false
+  }
+  const MSG1 = 'fi 引用功能冒烟第一条'
+  // 首启「内测声明→API Key」遮罩链有焦点陷阱，不点掉就无法聚焦编辑器。
+  // DOM .click() 不经过命中测试；可见性用 getBoundingClientRect 判
+  // （position:fixed 的 offsetParent 恒为 null，会误判不可见）。
+  for (let i = 0; i < 8; i++) {
+    const r = await evaluate(`(() => {
+      const visible = (b) => !b.disabled && b.getBoundingClientRect().width > 0;
+      const candidates = [...document.querySelectorAll('[class*="_mask_"], [role="dialog"]')];
+      const overlay = candidates.find((c) => [...c.querySelectorAll('button')].some(visible));
+      if (overlay === undefined) return candidates.length > 0 ? 'pending' : 'gone';
+      const buttons = [...overlay.querySelectorAll('button')].filter(visible);
+      const prefer = buttons.find((b) => /稍后|跳过|继续|以后|忽略|Later|Skip|Continue/i.test(b.innerText)) ?? buttons[0];
+      prefer.click();
+      return 'clicked';
+    })()`)
+    if (r !== 'clicked') break
+    await sleep(400)
+  }
+  let typed = await typeIntoComposer(MSG1)
+  if (typed !== MSG1) {
+    // 遮罩摘除有动画/焦点回移延迟，失败重试一轮
+    await sleep(800)
+    typed = await typeIntoComposer(MSG1)
+  }
+  check('0.8 选区引用：composer 可输入文本（CDP Input.insertText）', typed === MSG1, JSON.stringify(typed))
+  await sleep(400)
+  const sent1 = await clickSend()
+  const flowUp = await pollFor(`(() => [...document.querySelectorAll('[data-chat-flow-kind="user"]')].some((el) => el.innerText.includes(${JSON.stringify(MSG1)})))()`)
+  check('0.8 选区引用：首条消息进入对话流（提交回显）', sent1 === true && flowUp === true,
+    sent1 === true ? '' : '发送按钮不可用')
+
+  // 合成选区：turn 错误横幅等重渲染可能把刚建的选区冲掉（DOM 变更塌缩选区），
+  // 失败就重建选区再补一次 mouseup，直到悬浮菜单出现。
+  let tooltip = null
+  for (let i = 0; i < 5 && tooltip === null; i++) {
+    const r = await evaluate(`(() => {
+      const el = [...document.querySelectorAll('[data-chat-flow-kind="user"]')].find((el) => el.innerText.includes(${JSON.stringify(MSG1)}));
+      if (el === null) return 'no-flow';
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+      return 'selected:' + String(sel.toString()).length;
+    })()`)
+    await sleep(400) // rAF 防抖 + React 渲染
+    tooltip = await evaluate(`(() => {
+      const menu = document.querySelector('[data-fi-quote-tooltip]');
+      return menu === null ? null : { hasAction: menu.querySelector('[data-fi-quote-action="add"]') !== null, text: menu.innerText };
+    })()`)
+    if (tooltip === null) console.log(`[e2e] 选区第 ${i} 轮未弹菜单（${r}），重试`)
+  }
+  check('0.8 选区引用：选中消息文字弹出「添加到当前任务」悬浮菜单', tooltip !== null && tooltip.hasAction === true, JSON.stringify(tooltip))
+
+  const added = await evaluate(`(() => {
+    const btn = document.querySelector('[data-fi-quote-tooltip] [data-fi-quote-action="add"]');
+    if (btn === null) return false;
+    btn.click();
+    return true;
+  })()`)
+  await sleep(400)
+  const chip = await evaluate(`(() => {
+    const dock = document.querySelector('[data-fi-quote-dock]');
+    return dock === null ? null : { count: dock.querySelector('[data-fi-quote-count]')?.dataset.fiQuoteCount ?? null, label: dock.innerText };
+  })()`)
+  check('0.8 选区引用：点击后引用 chip 出现在输入框上方（1 条）', added === true && chip !== null && chip.count === '1', JSON.stringify(chip))
+
+  const MSG2 = 'fi 引用功能冒烟第二条'
+  let typed2 = await typeIntoComposer(MSG2)
+  if (typed2 !== MSG2) {
+    await sleep(800)
+    typed2 = await typeIntoComposer(MSG2)
+  }
+  await sleep(400)
+  await clickSend()
+  const merged = await pollFor(`(() => [...document.querySelectorAll('[data-chat-flow-kind="user"]')].some((el) => el.innerText.includes(${JSON.stringify(MSG2)}) && el.innerText.includes('【引用')))()`)
+  check('0.8 选区引用：发送时引用块并入正文（用户消息含【引用）', merged)
+  await sleep(600)
+  const chipAfter = await evaluate(`document.querySelector('[data-fi-quote-dock]') === null`)
+  check('0.8 选区引用：发送后 chip 消失（引用即消费）', chipAfter)
 
   // --- 0.5 cron IPC 全链路 ---
   const empty = await evaluate('window.fi.cron.list()')

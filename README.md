@@ -45,6 +45,7 @@ Electron main
 - 「搜索」：点击按钮或按 ⌘K（Windows/Linux 为 Ctrl+K）唤起居中搜索弹窗（ZCode Command Center 的会话版：全屏模糊遮罩 + 顶部圆角面板，portal 到 body）。空查询列最近任务；输入后 250ms 防抖本地标题/工作区名匹配 + dsh 内建消息内容搜索（cordis `sessions` 服务，SQLite FTS，上限 20 条，`hasMore` 提示细化关键词）合并展示，↑/↓ 循环选择、Enter 打开、Esc/点遮罩关闭，标题命中加亮；搜索覆盖全部工作区（含项目模式文件夹），default 工作区的行不重复展示工作区名。「插件中心」仍为占位。普通/项目模式的选择记在 localStorage（`fi.sidebar.mode`）。
 - 会话全文搜索索引：dsh 出厂 web 模板把 `session-query-sqlite` 配成 `openAt: never`（搜索 opt-in），fi 在插件补丁（`dsh-plugin/cordis.patch.yml`）里按同 id 覆盖为 `openAt: startup` + 落盘 `~/.dsh/session-query.db`，内容搜索才可用；后端不可用时弹窗自动降级为仅标题匹配并提示。
 - **定时任务**（侧栏「定时任务」按钮）：右侧整页面板（portal 到 body，左缘经 ResizeObserver 实时跟随侧栏宽度；点击新建任务/插件中心或任何会话被打开即退出面板）。调度与状态在主进程（`src/main/cron.ts`）：任务定义落盘 `~/.dsh/profiles/fi/fi-cron-tasks.json`（≤20 个，原子写），30s 轮询扫描到期任务；重复节奏用结构化规则（unit+interval+锚点，不用 cron 表达式），日/周/月锚定创建时刻的日历窗口。派发走 dsh web 官方远程端点（握手 URL 换 cookie 后 POST `/api/...`）：`workspace/create`（按 canonical path 幂等）→ `session/create({workspaceId})`（会话即时计入工作区清单）→ `session/prompt`（accepted 即派发成功）。生命周期：active/paused/completed/failed——completed 是有限计划自然耗尽的终态不可复活，failed 仅表示派发失败可重新启用，循环任务某轮失败只留错误痕迹继续调度；四档进度筛选（全部/进行中/已完成/失败）与卡片状态徽章共用同一对判定函数。客户端经 preload `window.fi.cron` 调用，主进程每次落库后向窗口推全量。运行会话按执行位置归组：「默认工作区」进普通模式任务清单，「项目文件夹」归该项目工作区（与项目模式新建任务的归属一致）。
+- **选区引用**（对话区选中文字 →「添加到当前任务」）：在对话消息（用户/助手/思考/工具输出，`data-chat-flow-kind` 判型）内选中一段文字弹出悬浮菜单，点击后引用 chip 挂到官方 `conversation.input.dock` 槽位（输入框正上方，与 todo/queue dock 同列），展开可逐条预览/移除/清空（对齐 ZCode 的 Conversation Selection：单条 8000 字、8 条、总量 16000 字上限与去重）。发送合并不拦截 UI：composer 的唯一发送出口是 `ConversationController.sendSession`（InputHub 每次动态解析服务实例），在实例上包一层把引用拼成 markdown 引用块（`> 【引用 · 来源】` 前缀行 + 逐行引用）追加到正文尾，历史以原生 blockquote 样式可见；发送失败时引用随草稿回滚回 chip。探测不到该出口（dsh 改版）时整个功能静默隐藏。
 
 - **外链**：window.open 和主框架跳转里的外部 http(s) 一律走系统浏览器；dsh 同源弹窗（如附件预览）开小窗口共享会话。
 - **流式中关窗确认**：preload 监听页面上停止按钮的 aria-label（“停止生成”/“Stop generating”，来自 dsh-client-ui-conversation 的 `input.stop`），流式期间关窗/退出会弹确认。dsh 改版或换语言导致标记失配时静默降级为直接关。
@@ -65,6 +66,7 @@ Electron main
 - dev 模式下 macOS 菜单栏应用名显示为 "Electron"（来自 dev bundle 的 Info.plist），打包后即为 fi
 - 忙碌检测只认中文/英文停止按钮文案，其他界面语言降级为不拦截关窗
 - 侧栏插件依赖 dsh 的 slot/hook 面（`sidebar.workspaces` 槽位、`uiWorkspace` 服务、根 hooks）：dsh 大版本改动这些内部契约时，插件会静默失效并退回原生侧栏；旧「新会话」按钮的隐藏选择器匹配 CSS Modules 类名尾段，同样有随版本失效的可能
+- 选区引用的发送合并依赖 dsh `ConversationController.sendSession`（客户端模块在服务实例上包裹实现）；该出口属 dsh 内部结构，改版时功能整体静默隐藏（菜单不出现）。引用不跨重启持久；空正文 + 仅引用的发送暂不支持（dsh 发送按钮对空草稿置灰，属宿主行为）
 - 首次启动（或插件未装时）会多跑一步 profile 初始化 + 插件 link，启动略慢属正常
 - 普通模式会话的输入框下方会显示 default 工作区名（来自 dsh 原生 composer 的工作区选择器），本期未处理
 - 定时任务只在 fi 运行期间调度（与 dsh 同生命周期）：fi 未运行时不触发，错过的时间点在下次启动时静默顺延，不补跑；运行中的会话若遇 dsh 重启会随之中断（任务状态不受影响）
