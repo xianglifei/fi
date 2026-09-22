@@ -82,9 +82,10 @@ const TASK_LIMIT = 20
 const MINUTE = 60_000
 const DAY_MS = 24 * 60 * MINUTE
 
+/** 非有限输入（NaN 等）收敛到 min，绝不外泄 NaN（调用方无须各自补救）。 */
 function clampInt(value: number, min: number, max: number): number {
   const n = Math.floor(value)
-  return Math.min(max, Math.max(min, Number.isFinite(n) ? n : min))
+  return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : min
 }
 
 function pad2(value: number): string {

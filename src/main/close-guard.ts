@@ -9,6 +9,7 @@ import { BrowserWindow, dialog, ipcMain } from 'electron'
 export function attachCloseGuard(win: BrowserWindow): void {
   let busy = false
   let allowClose = false
+  let confirming = false
 
   ipcMain.on('fi:busy', (event, value: unknown) => {
     if (event.sender === win.webContents) busy = value === true
@@ -18,7 +19,11 @@ export function attachCloseGuard(win: BrowserWindow): void {
   // when the close is declined, and proceeds once the window actually closes.
   win.on('close', (event) => {
     if (allowClose || !busy || win.isDestroyed()) return
+    // Keep preventing close while the confirmation is up, but don't stack a
+    // second dialog on repeated close clicks.
     event.preventDefault()
+    if (confirming) return
+    confirming = true
     void dialog
       .showMessageBox(win, {
         type: 'warning',
@@ -29,6 +34,7 @@ export function attachCloseGuard(win: BrowserWindow): void {
         cancelId: 0,
       })
       .then(({ response }) => {
+        confirming = false
         if (response !== 1 || win.isDestroyed()) return
         allowClose = true
         // Proceeds the pending close; during an aborted Cmd+Q the follow-up
