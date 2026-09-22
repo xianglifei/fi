@@ -6,6 +6,8 @@
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-09-22
+
 ### Added
 
 - 普通模式的任务清单可以查看项目任务了：「任务」分隔栏右侧新增显隐开关（默认隐藏，仅展示普通任务），点击展开后，在项目模式里按文件夹创建的任务会按工作区分组列在普通任务下方（组头带文件夹图标与文件夹名，最近用过的项目排上面），再点一次收起。开关状态跨重启记忆；在文件夹里刚建好、还没发第一条消息的任务照常显示（可见性规则与普通任务一致）。
@@ -118,7 +120,8 @@
 - 流式输出中的关窗确认（preload 监听停止按钮 aria-label「停止生成/Stop generating」，标记失配时静默降级为直接关）。
 - 单实例锁、macOS 标准角色菜单（复制粘贴/缩放/刷新）。
 
-[Unreleased]: https://github.com/xianglifei/fi/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/xianglifei/fi/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/xianglifei/fi/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/xianglifei/fi/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/xianglifei/fi/compare/v0.5.5...v0.6.0
 [0.5.5]: https://github.com/xianglifei/fi/compare/v0.5.4...v0.5.5
