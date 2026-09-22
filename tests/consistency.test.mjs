@@ -27,7 +27,7 @@ test('CHANGELOG 每个版本都有对比链接，Unreleased 指向最新版', ()
 test('CHANGELOG 覆盖 0.1.0 → 当前版本的连续版本线（无跳档）', () => {
   const versions = [...changelog.matchAll(/^## \[(\d+\.\d+\.\d+)\]/gm)].map((m) => m[1])
   // 已知历史基线随发版自然向上生长：pkg.version 打头（与最新定版重复时去重）。
-  const historical = ['0.5.3', '0.5.2', '0.5.1', '0.5.0', '0.4.0', '0.3.0', '0.2.0', '0.1.1', '0.1.0']
+  const historical = ['0.5.4', '0.5.3', '0.5.2', '0.5.1', '0.5.0', '0.4.0', '0.3.0', '0.2.0', '0.1.1', '0.1.0']
   const expected = [pkg.version, ...historical].filter((v, i, arr) => arr.indexOf(v) === i)
   assert.deepEqual(versions, expected)
 })

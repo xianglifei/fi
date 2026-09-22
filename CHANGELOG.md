@@ -6,6 +6,8 @@
 
 ## [Unreleased]
 
+## [0.5.5] - 2026-09-22
+
 ### Fixed
 
 - 「新建任务」按钮现在会跟随右侧页面常驻高亮：右侧停在新任务页（尚未发送首条消息）时，按钮保持与「定时任务」面板打开时同款的灰色圆角条；打开定时任务面板、切换到已有任务或打开其他页面时自动熄灭，两个页面级高亮互斥不并存。
@@ -100,7 +102,8 @@
 - 流式输出中的关窗确认（preload 监听停止按钮 aria-label「停止生成/Stop generating」，标记失配时静默降级为直接关）。
 - 单实例锁、macOS 标准角色菜单（复制粘贴/缩放/刷新）。
 
-[Unreleased]: https://github.com/xianglifei/fi/compare/v0.5.4...HEAD
+[Unreleased]: https://github.com/xianglifei/fi/compare/v0.5.5...HEAD
+[0.5.5]: https://github.com/xianglifei/fi/compare/v0.5.4...v0.5.5
 [0.5.4]: https://github.com/xianglifei/fi/compare/v0.5.3...v0.5.4
 [0.5.3]: https://github.com/xianglifei/fi/compare/v0.5.2...v0.5.3
 [0.5.2]: https://github.com/xianglifei/fi/compare/v0.5.1...v0.5.2
