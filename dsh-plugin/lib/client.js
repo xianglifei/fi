@@ -359,8 +359,9 @@ button[class*="_newSession"] { display: none !important; }
 .fi-action, .fi-row, .fi-fb-row, .fi-fb-menu-item, .fi-search-row, .fi-cron-row { box-sizing: border-box; }
 /* 左缘对齐 dsh 底部设置行：设置图标起于侧栏 x=18（root 12px 内边距 -
    triggerRow 负 margin 2 + trigger 左内边距 8）；fi 按钮列以 -2px 外边距
-   抵消区域缩进、8px 左内边距落回同一条竖线。 */
-.fi-actions { display: flex; flex-direction: column; flex: none; gap: 4px; margin: 2px 2px 10px -2px; }
+   抵消区域缩进、8px 左内边距落回同一条竖线。右缘 6px 与任务列表行的
+   悬浮高亮条（.fi-list 右内边距 6px）对齐同一节奏。 */
+.fi-actions { display: flex; flex-direction: column; flex: none; gap: 4px; margin: 2px 6px 10px -2px; }
 .fi-action { display: flex; align-items: center; justify-content: flex-start; gap: 7px;
   width: 100%; height: 36px; padding: 0 12px 0 8px; border: none; border-radius: 10px;
   background: transparent; color: var(--dsw-alias-label-secondary);
@@ -368,12 +369,11 @@ button[class*="_newSession"] { display: none !important; }
   cursor: pointer; white-space: nowrap; }
 .fi-region--rail .fi-action { justify-content: center; padding: 0; }
 .fi-action:hover { background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-primary); }
-.fi-action[aria-pressed="true"] { background: var(--dsw-alias-interactive-bg-active); color: var(--dsw-alias-label-primary); }
+.fi-action:active { background: var(--dsw-alias-interactive-bg-active); color: var(--dsw-alias-label-primary); }
+/* 常驻高亮两种语义共用同一配方：aria-pressed=开合态（定时任务面板）、
+   aria-current=page=当前位置（右侧停在新任务页）。 */
+.fi-action[aria-pressed="true"], .fi-action[aria-current="page"] { background: var(--dsw-alias-interactive-bg-active); color: var(--dsw-alias-label-primary); }
 .fi-action:focus-visible { outline: 2px solid var(--dsw-alias-label-primary); outline-offset: -2px; }
-.fi-action--primary { height: 38px; border: 0.5px solid var(--dsw-alias-border-l3);
-  background: var(--dsw-alias-button-elevated-fill, var(--dsw-alias-bg-layer-1));
-  color: var(--dsw-alias-label-primary); }
-.fi-action--primary:hover { background: var(--dsw-alias-button-floating-hover, var(--dsw-alias-interactive-bg-hover)); }
 /* 项目模式入口：注入到 dsh 侧栏 logo 行（收起按钮左侧）的容器与按钮 */
 .fi-ws-toggle-host { display: inline-flex; flex: none; }
 .fi-ws-toggle { corner-shape: round; cursor: pointer; width: 28px; height: 28px;
@@ -718,16 +718,17 @@ button[class*="_newSession"] { display: none !important; }
 		//#endregion
 
 		//#region components
-		function ActionButton({ label, primary, icon: iconName, onClick, pressed }) {
-			return jsx.jsx("button", {
-				type: "button",
-				className: primary ? "fi-action fi-action--primary" : "fi-action",
-				"aria-label": label,
-				"aria-pressed": pressed === undefined ? undefined : pressed ? "true" : "false",
-				onClick,
-				children: [icon(iconName, primary ? 16 : 18), jsx.jsx("span", { children: label })],
-			});
-		}
+function ActionButton({ label, icon: iconName, onClick, pressed, current }) {
+	return jsx.jsx("button", {
+		type: "button",
+		className: "fi-action",
+		"aria-label": label,
+		"aria-pressed": pressed === undefined ? undefined : pressed ? "true" : "false",
+		"aria-current": current ? "page" : undefined,
+		onClick,
+		children: [icon(iconName, 18), jsx.jsx("span", { children: label })],
+	});
+}
 
 		function SessionRow({ session, selected, pending, onOpen, t }) {
 			const title = session.blank ? t("session.new") : String(session.displayTitle ?? "");
@@ -1061,6 +1062,11 @@ button[class*="_newSession"] { display: none !important; }
 
 			const rows = react.useMemo(() => deriveRows(sessions, workspaces), [sessions, workspaces]);
 			const currentId = panelActive ? undefined : sessions.current;
+			// 「新建任务」按钮常驻高亮（aria-current=page）：右侧停在新任务页
+			// （当前会话是未发首条消息的 blank）时亮起，与「定时任务」面板打开时
+			// 的常驻样式一致；定时面板开着或切到已有任务时熄灭——两个页面级
+			// 高亮互斥。blank 判定与 boot pin 同款（byId[current]?.blank）。
+			const onNewTaskPage = !cronOpen && (sessions.byId[currentId]?.blank ?? false);
 
 			// 会话被打开（新建/搜索/列表点击/定时任务跳转）→ 右侧换页，面板随之关闭。
 			react.useEffect(() => {
@@ -1145,7 +1151,7 @@ button[class*="_newSession"] { display: none !important; }
 					? jsx.jsx(FileBrowser, { startNewTaskIn, t })
 					: jsx.jsxs(react.Fragment, { children: [
 						jsx.jsxs("div", { className: "fi-actions", children: [
-							jsx.jsx(ActionButton, { label: t("newTask"), primary: true, icon: ICONS.newTask, onClick: () => {
+							jsx.jsx(ActionButton, { label: t("newTask"), icon: ICONS.newTask, current: onNewTaskPage, onClick: () => {
 								closeCron();
 								startNewTask();
 							} }),
