@@ -6,6 +6,8 @@
 
 ## [Unreleased]
 
+## [0.5.4] - 2026-09-22
+
 ### Fixed
 
 - 悬停侧栏右上角「收起侧栏」按钮不再闪动、也不再弹出错误的「项目模式」气泡：收起按钮的悬浮提示气泡会临时挂到 logo 行行尾，此前项目模式入口的对账逻辑误把它当作定位锚点，把入口搬过收起按钮造成按钮跳位——光标下的元素随之换成项目模式入口（弹出错误气泡），布局振荡还会吞掉鼠标离开事件，导致气泡卡死不消失。现在锚点会跳过这类临时气泡节点，入口全程原地不动。
@@ -91,7 +93,8 @@
 - 流式输出中的关窗确认（preload 监听停止按钮 aria-label「停止生成/Stop generating」，标记失配时静默降级为直接关）。
 - 单实例锁、macOS 标准角色菜单（复制粘贴/缩放/刷新）。
 
-[Unreleased]: https://github.com/xianglifei/fi/compare/v0.5.3...HEAD
+[Unreleased]: https://github.com/xianglifei/fi/compare/v0.5.4...HEAD
+[0.5.4]: https://github.com/xianglifei/fi/compare/v0.5.3...v0.5.4
 [0.5.3]: https://github.com/xianglifei/fi/compare/v0.5.2...v0.5.3
 [0.5.2]: https://github.com/xianglifei/fi/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/xianglifei/fi/compare/v0.5.0...v0.5.1
