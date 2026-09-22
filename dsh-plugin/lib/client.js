@@ -16,6 +16,7 @@ window.__ModuleLoader__.load({
 		/** 普通模式背后的隐藏工作区标题；服务端半层负责保证它存在。 */
 		const DEFAULT_WORKSPACE_TITLE = "default";
 		const MODE_STORAGE_KEY = "fi.sidebar.mode";
+		const SHOW_PROJECTS_STORAGE_KEY = "fi.sidebar.showProjectTasks";
 
 		/** 搜索弹窗：防抖、查询长度上限、空查询时最近会话条数（均对齐 dsh 原生搜索）。 */
 		const SEARCH_DEBOUNCE_MS = 250;
@@ -29,6 +30,8 @@ window.__ModuleLoader__.load({
 			plugins: "blocks",
 			projectOff: "folder",
 			projectOn: "folder-open",
+			projectsOff: "folder-dot",
+			projectsOn: "folder-open-dot",
 			folderRow: "folder",
 			newTaskHere: "message-circle-plus",
 			back: "chevron-left",
@@ -64,6 +67,10 @@ window.__ModuleLoader__.load({
 			"blocks": '<path d="M10 22V7a1 1 0 0 0-1-1H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5a1 1 0 0 0-1-1H2"/><rect x="14" y="2" width="8" height="8" rx="1"/>',
 			"folder": '<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>',
 			"folder-open": '<path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/>',
+			// 项目任务显隐（0.8）：关=folder-dot（默认），开=folder-open-dot
+			// （lucide 0.544 官方 path）
+			"folder-dot": '<path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/><circle cx="12" cy="13" r="1"/>',
+			"folder-open-dot": '<path d="m6 14 1.45-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.55 6a2 2 0 0 1-1.94 1.5H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h3.93a2 2 0 0 1 1.66.9l.82 1.2a2 2 0 0 0 1.66.9H18a2 2 0 0 1 2 2v2"/><circle cx="14" cy="15" r="1"/>',
 			"message-circle-plus": '<path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"/><path d="M8 12h8"/><path d="M12 8v8"/>',
 			"chevron-left": '<path d="m15 18-6-6 6-6"/>',
 			"rotate-cw": '<path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>',
@@ -123,11 +130,13 @@ window.__ModuleLoader__.load({
 			"plugins": "插件中心",
 			"mode.project": "项目模式",
 			"section.tasks": "任务",
+			"section.toggleProjects": "显示或隐藏项目任务",
 			"session.new": "新任务",
 			"row.open.aria": "打开会话「{name}」",
 			"row.newTaskHere": "在此文件夹新建任务",
 			"empty.none": "暂无会话",
 			"empty.loading": "正在加载…",
+			"empty.projects": "项目文件夹里还没有任务",
 			"fb.back": "返回上一级",
 			"fb.refresh": "刷新",
 			"fb.toggleHidden": "显示或隐藏隐藏文件",
@@ -276,11 +285,13 @@ window.__ModuleLoader__.load({
 			"plugins": "Plugins",
 			"mode.project": "Projects",
 			"section.tasks": "Tasks",
+			"section.toggleProjects": "Show or hide project tasks",
 			"session.new": "New Task",
 			"row.open.aria": "Open session \"{name}\"",
 			"row.newTaskHere": "New task in this folder",
 			"empty.none": "No sessions yet",
 			"empty.loading": "Loading…",
+			"empty.projects": "No tasks in project folders yet",
 			"fb.back": "Up one level",
 			"fb.refresh": "Refresh",
 			"fb.toggleHidden": "Show or hide hidden files",
@@ -463,11 +474,23 @@ button[class*="_newSession"] { display: none !important; }
   background: var(--dsw-alias-interactive-bg-active); }
 [class*="_collapsed"] .fi-ws-toggle-host { display: none; }
 /* 分组标题行：复刻 dsh WorkspaceBrowser sectionHeader 的样式配方
-   （高 36px、三级灰、line-height 20px、padding-left 4px），去掉右侧按钮 */
+   （高 36px、三级灰、line-height 20px、padding-left 4px）；右侧挂项目任务
+   显隐开关，右缘与 logo 行「收起侧栏」按钮同一条垂线（CDP 实测：fi-region
+   跨侧栏内容全宽，logoRow 比它再内缩 12px，收起按钮右缘贴 logoRow 右缘，
+   故右内边距取 12px；与任务行高亮条右缘的 6px 是两条不同的节奏线）。 */
 .fi-section { box-sizing: border-box; height: 36px; flex: none; align-items: center;
-  margin: 2px 0 4px; padding-left: 4px; display: flex;
+  margin: 2px 0 4px; padding: 0 12px 0 4px; display: flex;
   color: var(--dsw-alias-label-tertiary); overflow: hidden; }
-.fi-section-label { white-space: nowrap; min-width: 0; line-height: 20px; overflow: hidden; }
+.fi-section-label { flex: 1; white-space: nowrap; min-width: 0; line-height: 20px; overflow: hidden; }
+/* 项目任务显隐开关（0.8）：与 logo 行收起按钮/项目模式入口同规格的 28px
+   图标按钮（圆形、右缘和中心都落在同一条垂线上），开=folder-open-dot
+   （含 bg 常驻），关=folder-dot */
+.fi-section-toggle { flex: none; width: 28px; height: 28px; border: none; border-radius: 50%;
+  background: transparent; color: var(--dsw-alias-label-tertiary); cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+.fi-section-toggle:hover { background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-primary); }
+.fi-section-toggle:focus-visible { outline: 2px solid var(--dsw-alias-label-primary); outline-offset: -2px; }
+.fi-section-toggle[aria-pressed="true"] { background: var(--dsw-alias-interactive-bg-active); color: var(--dsw-alias-label-primary); }
 .fi-list { flex: 1; min-height: 0; overflow-y: auto; padding: 2px 6px 16px 2px;
   scrollbar-width: thin; scrollbar-color: var(--dsh-scrollbar-thumb, transparent) transparent; }
 .fi-row { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 34px;
@@ -479,6 +502,14 @@ button[class*="_newSession"] { display: none !important; }
 .fi-row[data-selected="true"] { background: var(--dsw-alias-interactive-bg-active); font-weight: 500; }
 .fi-row-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fi-row-time { flex: none; color: var(--dsw-alias-label-tertiary); font-size: 12px; }
+/* 项目任务分组头（「显示项目任务」展开后）：比一级标题矮一档、小一号，
+   文件夹图标 + 工作区名（文件夹名），margin-top 与上方行组拉开距离 */
+.fi-group { box-sizing: border-box; height: 28px; flex: none; display: flex; align-items: center;
+  gap: 6px; margin-top: 6px; padding: 0 8px; overflow: hidden;
+  color: var(--dsw-alias-label-tertiary); }
+.fi-group-icon { flex: none; display: inline-flex; color: var(--dsw-alias-label-secondary); }
+.fi-group-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 12.5px; line-height: 18px; }
 .fi-dot { flex: none; width: 7px; height: 7px; border-radius: 50%; }
 .fi-dot--running { background: var(--dsw-alias-state-success-primary); }
 .fi-dot--pending { background: var(--dsw-alias-state-business-primary); }
@@ -777,6 +808,24 @@ button[class*="_newSession"] { display: none !important; }
 
 		//#region data
 		/**
+		 * 普通模式「显示项目任务」的选择持久在 localStorage，跨重启生效。
+		 * 键缺省 = 不展示（未动过开关时的默认，任务清单只看 default 工作区）；
+		 * 用户点过开关后以存储的选择为准（与文件浏览器的 showHidden 同款口径）。
+		 */
+		function readShowProjects() {
+			try {
+				return window.localStorage.getItem(SHOW_PROJECTS_STORAGE_KEY) === "1";
+			} catch {
+				return false;
+			}
+		}
+		function writeShowProjects(value) {
+			try {
+				window.localStorage.setItem(SHOW_PROJECTS_STORAGE_KEY, value ? "1" : "0");
+			} catch { /* 存储不可用时仅退化为不记忆 */ }
+		}
+
+		/**
 		 * default 工作区的会话行，按最近更新逆序（同分按 id 稳定排序，规则对齐
 		 * dsh WorkspaceBrowser 的 byRecency）。可见性与 dsh 一致：排除子代理行、
 		 * 已归档行；blank 行只保留当前那条（未发送首条消息的新任务）。
@@ -796,6 +845,37 @@ button[class*="_newSession"] { display: none !important; }
 			}
 			rows.sort((a, b) => (b.updatedAt !== a.updatedAt ? b.updatedAt - a.updatedAt : (a.id < b.id ? -1 : 1)));
 			return rows;
+		}
+
+		/**
+		 * 项目任务分组：每个非 default 工作区一组（{id, title, rows}），供普通
+		 * 模式「显示项目任务」展开用。可见性与 deriveRows 同一套（排除子代理、
+		 * 已归档、blank 只留当前那条）；组内按最近更新逆序，组间按组内最新活动
+		 * 逆序（最近用过的项目排上面），没有可见会话的工作区整组不出现。
+		 * 快照未就绪返回 null（与 deriveRows 同步出 loading 态）。
+		 */
+		function deriveProjectGroups(sessions, workspaces) {
+			if (sessions.phase !== "ready" || workspaces.phase !== "ready") return null;
+			const archived = new Set(workspaces.archivedSessionIds);
+			const groups = [];
+			for (const w of workspaces.items) {
+				if (w.title === DEFAULT_WORKSPACE_TITLE) continue;
+				const rows = [];
+				for (const id of w.sessionIds) {
+					const s = sessions.byId[id];
+					if (s === undefined) continue;
+					if (s.origin === "subagent" || archived.has(s.id)) continue;
+					if (s.blank && s.id !== sessions.current) continue;
+					rows.push(s);
+				}
+				if (rows.length === 0) continue;
+				rows.sort((a, b) => (b.updatedAt !== a.updatedAt ? b.updatedAt - a.updatedAt : (a.id < b.id ? -1 : 1)));
+				groups.push({ id: w.workspaceId, title: w.title, rows });
+			}
+			groups.sort((a, b) => (b.rows[0].updatedAt !== a.rows[0].updatedAt
+				? b.rows[0].updatedAt - a.rows[0].updatedAt
+				: (a.id < b.id ? -1 : 1)));
+			return groups;
 		}
 
 		/**
@@ -1219,7 +1299,19 @@ function ActionButton({ label, icon: iconName, onClick, pressed, current }) {
 			const panelActive = usePanelInfo((info) => info.activePanelId !== null);
 			const pending = useSessionPendingInteraction((s) => s);
 
+			// 「显示项目任务」：默认隐藏（任务清单只看 default），选择持久在
+			// localStorage；展开后 default 行照旧，下面按项目工作区分组追加。
+			const [showProjects, setShowProjects] = react.useState(readShowProjects);
+			const toggleProjects = () => {
+				setShowProjects((prev) => {
+					const next = !prev;
+					writeShowProjects(next);
+					return next;
+				});
+			};
+
 			const rows = react.useMemo(() => deriveRows(sessions, workspaces), [sessions, workspaces]);
+			const projectGroups = react.useMemo(() => deriveProjectGroups(sessions, workspaces), [sessions, workspaces]);
 			const currentId = panelActive ? undefined : sessions.current;
 			// 「新建任务」按钮常驻高亮（aria-current=page）：右侧停在新任务页
 			// （当前会话是未发送首条消息的 blank）时亮起，与面板按钮打开时的
@@ -1347,21 +1439,50 @@ function ActionButton({ label, icon: iconName, onClick, pressed, current }) {
 							jsx.jsx(ActionButton, { label: t("schedule"), icon: ICONS.schedule, pressed: page === "cron", onClick: () => setPage((value) => (value === "cron" ? null : "cron")) }),
 							jsx.jsx(ActionButton, { label: t("plugins"), icon: ICONS.plugins, pressed: page === "plugins", onClick: () => setPage((value) => (value === "plugins" ? null : "plugins")) }),
 						] }),
-					jsx.jsx("div", { className: "fi-section", children:
+					jsx.jsxs("div", { className: "fi-section", children: [
 						jsx.jsx("span", { className: "fi-section-label", children: t("section.tasks") }),
-					}),
+						// 项目任务显隐开关：关=folder-dot（默认），开=folder-open-dot；
+						// 28px 按钮/16px 图标与 logo 行收起按钮同规格，垂直对齐同一条线
+						jsx.jsx("button", {
+							type: "button",
+							className: "fi-section-toggle",
+							"aria-label": t("section.toggleProjects"),
+							title: t("section.toggleProjects"),
+							"aria-pressed": showProjects ? "true" : "false",
+							onClick: toggleProjects,
+							children: icon(showProjects ? ICONS.projectsOn : ICONS.projectsOff, 16),
+						}),
+					] }),
 					jsx.jsx("div", { className: "fi-list", children:
-						rows === null
+						rows === null || (showProjects && projectGroups === null)
 							? jsx.jsx("div", { className: "fi-loading", children: t("empty.loading") })
-							: rows.length === 0
+							: rows.length === 0 && (!showProjects || projectGroups.length === 0)
 								? jsx.jsx("div", { className: "fi-empty", children: t("empty.none") })
-								: rows.map((s) => jsx.jsx(SessionRow, {
-									session: s,
-									selected: s.id === currentId,
-									pending: typeof pending?.get === "function" && pending.get(s.id) !== undefined,
-									onOpen: openSessionAndClose,
-									t,
-								}, s.id)),
+								: jsx.jsxs(react.Fragment, { children: [
+									rows.map((s) => jsx.jsx(SessionRow, {
+										session: s,
+										selected: s.id === currentId,
+										pending: typeof pending?.get === "function" && pending.get(s.id) !== undefined,
+										onOpen: openSessionAndClose,
+										t,
+									}, s.id)),
+									showProjects ? projectGroups.flatMap((group) => [
+										jsx.jsxs("div", { className: "fi-group", children: [
+											jsx.jsx("span", { className: "fi-group-icon", children: icon(ICONS.folderRow, 14) }),
+											jsx.jsx("span", { className: "fi-group-title", children: group.title }),
+										] }, `group:${group.id}`),
+										...group.rows.map((s) => jsx.jsx(SessionRow, {
+											session: s,
+											selected: s.id === currentId,
+											pending: typeof pending?.get === "function" && pending.get(s.id) !== undefined,
+											onOpen: openSessionAndClose,
+											t,
+										}, s.id)),
+									]) : null,
+									showProjects && projectGroups.length === 0 && rows.length > 0
+										? jsx.jsx("div", { className: "fi-empty", children: t("empty.projects") })
+										: null,
+								] }),
 					}),
 				] }),
 				searchDialog,

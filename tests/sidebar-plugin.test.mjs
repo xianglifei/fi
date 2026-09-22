@@ -1,6 +1,7 @@
 // 侧栏插件 fi-sidebar——模块加载 + 纯逻辑单元测试。
 // 被测对象：dsh-plugin/lib/client.js（真实源码，在桩环境中加载后提取内部纯函数）。
-// 覆盖：0.2 任务列表/搜索合并、0.4 图标表、0.5 面板筛选与调度文案、启动钉子、词典完整性。
+// 覆盖：0.2 任务列表/搜索合并、0.4 图标表、0.5 面板筛选与调度文案、启动钉子、
+// 词典完整性、0.8 项目任务分组（deriveProjectGroups）。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -48,6 +49,7 @@ const pureFns = new Function(`
   const DEFAULT_WORKSPACE_TITLE = 'default';
   ${extractFn('format')}
   ${extractFn('deriveRows')}
+  ${extractFn('deriveProjectGroups')}
   ${extractFn('deriveSearchRows')}
   ${extractFn('relativeTime')}
   ${extractFn('cronHasFailure')}
@@ -58,7 +60,7 @@ const pureFns = new Function(`
   ${extractFn('placeToggleHost')}
   const pad2 = (v) => String(v).padStart(2, '0');
   const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
-  return { format, deriveRows, deriveSearchRows, relativeTime, cronHasFailure, cronStatusKind, cronFilterKind, cronScheduleText, cronFutureRelative, placeToggleHost };
+  return { format, deriveRows, deriveProjectGroups, deriveSearchRows, relativeTime, cronHasFailure, cronStatusKind, cronFilterKind, cronScheduleText, cronFutureRelative, placeToggleHost };
 `)()
 
 // 从 apply() 里捕获真实词典（zh/en）与全部槽位注册
@@ -238,6 +240,9 @@ test('ICONS 引用的名字全部在 LUCIDE_INNER 表中（0.4 全量 Lucide 化
   assert.equal(icons.pluginInstall, 'download')
   assert.equal(icons.pluginRepo, 'external-link')
   assert.equal(icons.pluginRemove, 'trash-2')
+  // 0.8 项目任务显隐开关（关=folder-dot，开=folder-open-dot）
+  assert.equal(icons.projectsOff, 'folder-dot')
+  assert.equal(icons.projectsOn, 'folder-open-dot')
 })
 
 // ---------------------------------------------------------------------------
@@ -340,6 +345,74 @@ test('deriveRows: updatedAt 相同按 id 升序稳定排序', () => {
   const list = [mkSession('b', 100), mkSession('a', 100), mkSession('c', 100)]
   const { sessions, workspaces } = mkSnapshots(list, [{ title: 'default', sessionIds: ['b', 'a', 'c'] }])
   assert.deepEqual(pureFns.deriveRows(sessions, workspaces).map((r) => r.id), ['a', 'b', 'c'])
+})
+
+// ---------------------------------------------------------------------------
+// 0.8 项目任务分组（deriveProjectGroups，普通模式「显示项目任务」展开用）
+// ---------------------------------------------------------------------------
+
+test('deriveProjectGroups: 快照未就绪返回 null', () => {
+  assert.equal(pureFns.deriveProjectGroups({ phase: 'loading' }, { phase: 'ready' }), null)
+  assert.equal(pureFns.deriveProjectGroups({ phase: 'ready' }, { phase: 'loading' }), null)
+})
+
+test('deriveProjectGroups: 非 default 工作区各成一组，组内可见性与 deriveRows 同一套', () => {
+  const list = [
+    mkSession('def', 900),                                  // default 的行不进分组
+    mkSession('p1-new', 300),
+    mkSession('p1-old', 100),
+    mkSession('p1-sub', 400, { origin: 'subagent' }),       // 子代理排除
+    mkSession('p1-arch', 500),                              // 归档排除
+    mkSession('p1-blank', 600, { blank: true }),            // 非当前 blank 排除
+  ]
+  const { sessions, workspaces } = mkSnapshots(list, [
+    { title: 'default', workspaceId: 'ws-def', sessionIds: ['def'] },
+    { title: 'proj-a', workspaceId: 'ws-a', sessionIds: ['p1-sub', 'p1-arch', 'p1-blank', 'p1-old', 'p1-new'] },
+  ])
+  sessions.byId['p1-arch'].id = 'p1-arch'
+  workspaces.archivedSessionIds = ['p1-arch']
+  const groups = pureFns.deriveProjectGroups(sessions, workspaces)
+  assert.deepEqual(groups.map((g) => g.title), ['proj-a'])
+  assert.deepEqual(groups[0].rows.map((r) => r.id), ['p1-new', 'p1-old'])
+})
+
+test('deriveProjectGroups: blank 会话是当前会话时保留（在文件夹里刚建的任务切回普通模式仍可见）', () => {
+  const list = [mkSession('p-blank', 600, { blank: true }), mkSession('p-real', 100)]
+  const { sessions, workspaces } = mkSnapshots(list, [
+    { title: 'default', workspaceId: 'ws-def', sessionIds: [] },
+    { title: 'proj-a', workspaceId: 'ws-a', sessionIds: ['p-blank', 'p-real'] },
+  ])
+  const groups = pureFns.deriveProjectGroups(sessions, workspaces)
+  assert.deepEqual(groups[0].rows.map((r) => r.id), ['p-blank', 'p-real'])
+})
+
+test('deriveProjectGroups: 没有可见会话的工作区整组不出现；组间按组内最新活动倒序', () => {
+  const list = [
+    mkSession('a1', 100),
+    mkSession('b1', 500),
+    mkSession('b2', 50),
+    mkSession('c-blank', 700, { blank: true }), // empty-ws 里唯一的行不可见 → 整组消失
+  ]
+  const { sessions, workspaces } = mkSnapshots(list, [
+    { title: 'default', workspaceId: 'ws-def', sessionIds: [] },
+    { title: 'proj-a', workspaceId: 'ws-a', sessionIds: ['a1'] },
+    { title: 'proj-b', workspaceId: 'ws-b', sessionIds: ['b1', 'b2'] },
+    { title: 'empty-ws', workspaceId: 'ws-e', sessionIds: ['c-blank'] },
+  ])
+  const groups = pureFns.deriveProjectGroups(sessions, workspaces)
+  assert.deepEqual(groups.map((g) => g.id), ['ws-b', 'ws-a'])
+  assert.deepEqual(groups[1].rows.map((r) => r.id), ['a1'])
+})
+
+test('deriveProjectGroups: 组内 updatedAt 相同按 id 升序、组间最新时间相同按 id 升序稳定排序', () => {
+  const list = [mkSession('x1', 100), mkSession('x0', 100), mkSession('y1', 100), mkSession('y0', 100)]
+  const { sessions, workspaces } = mkSnapshots(list, [
+    { title: 'proj-x', workspaceId: 'ws-x', sessionIds: ['x1', 'x0'] },
+    { title: 'proj-y', workspaceId: 'ws-y', sessionIds: ['y1', 'y0'] },
+  ])
+  const groups = pureFns.deriveProjectGroups(sessions, workspaces)
+  assert.deepEqual(groups.map((g) => g.id), ['ws-x', 'ws-y'])
+  assert.deepEqual(groups[0].rows.map((r) => r.id), ['x0', 'x1'])
 })
 
 // ---------------------------------------------------------------------------
