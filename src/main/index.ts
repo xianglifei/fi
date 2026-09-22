@@ -3,6 +3,7 @@ import { DshProcess } from './dsh-process'
 import { attachCloseGuard } from './close-guard'
 import { registerCronBridge } from './cron'
 import { installMenu } from './menu'
+import { registerPluginCenterBridge } from './plugin-center'
 import { registerFsBridge } from './fs-bridge'
 import { createMainWindow, setDshOrigin } from './window'
 
@@ -98,6 +99,7 @@ if (!gotLock) {
   app.whenReady().then(() => {
     installMenu()
     registerFsBridge()
+    registerPluginCenterBridge()
     wireDshOnce()
     registerCronBridge(dsh)
     showWindow()

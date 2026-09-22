@@ -34,6 +34,20 @@ contextBridge.exposeInMainWorld('fi', {
       return () => ipcRenderer.removeListener('fi:cron:changed', handler)
     },
   },
+
+  // --- 插件中心桥（见 src/main/plugin-center.ts）---
+  // list 返回 fi profile 的已安装插件全量；install/remove 返回 {ok, error?}；
+  // changed 在安装/卸载成功后推全量。
+  plugins: {
+    list: () => ipcRenderer.invoke('fi:plugins:list'),
+    install: (spec: string) => ipcRenderer.invoke('fi:plugins:install', spec),
+    remove: (name: string) => ipcRenderer.invoke('fi:plugins:remove', name),
+    onChanged: (callback: (plugins: unknown[]) => void) => {
+      const handler = (_event: unknown, plugins: unknown[]) => callback(plugins)
+      ipcRenderer.on('fi:plugins:changed', handler)
+      return () => ipcRenderer.removeListener('fi:plugins:changed', handler)
+    },
+  },
 })
 
 // --- busy watcher (drives the close confirmation in the main process) ---

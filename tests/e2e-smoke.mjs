@@ -386,6 +386,82 @@ try {
   const afterDel = await evaluate(`(async () => { const l = await window.fi.cron.list(); for (const t of l.tasks) await window.fi.cron.remove(t.id); return (await window.fi.cron.list()).tasks.length })()`)
   check('0.5 cron：delete 清空列表', afterDel === 0)
 
+  // --- 0.7 插件中心：IPC 面 + 两区面板（纯客户端链路，不真实联网安装）---
+  check('0.7 插件中心：preload 暴露 window.fi.plugins 面', await evaluate(
+    `typeof window.fi.plugins === 'object' && typeof window.fi.plugins.list === 'function' && typeof window.fi.plugins.install === 'function' && typeof window.fi.plugins.onChanged === 'function'`))
+  const pluginsList = await evaluate('window.fi.plugins.list()')
+  check('0.7 插件中心：list 返回空清单（隔离环境只装过内置 fi-sidebar，过滤后为空）',
+    pluginsList?.ok === true && Array.isArray(pluginsList.plugins) && pluginsList.plugins.length === 0,
+    JSON.stringify(pluginsList?.plugins))
+  const badInstall = await evaluate('window.fi.plugins.install("")')
+  check('0.7 插件中心：空安装标识被拒（主进程校验）', badInstall?.ok === false, badInstall?.error)
+  const pluginOpened = await evaluate(`(() => {
+    const btn = document.querySelector('.fi-actions [aria-label="插件中心"], .fi-actions [aria-label="Plugins"]');
+    if (btn === null) return false;
+    btn.click();
+    return true;
+  })()`)
+  const pluginPanel = await pollFor(`(() => {
+    if (document.querySelector('.fi-plugin-empty') === null) return false;
+    const rec = document.querySelector('.fi-plugin-list .fi-plugin-repo');
+    const installBtn = document.querySelector('.fi-plugin-list .fi-cron-btn--primary');
+    return rec !== null && (rec.getAttribute('href') ?? '').startsWith('https://github.com/')
+      && installBtn !== null && /安装|Install/.test(installBtn.textContent);
+  })()`)
+  check('0.7 插件中心：面板打开——已安装空态提示 + 推荐卡（GitHub 链接与安装按钮）',
+    pluginOpened === true && pluginPanel === true)
+  const recVer = await evaluate(`document.querySelector('.fi-plugin-list .fi-plugin-ver')?.textContent ?? null`)
+  check('0.7 插件中心：推荐卡展示版本号', recVer !== null && /^\d+\.\d+\.\d+$/.test(recVer), recVer)
+
+  // --- 0.7 插件中心：卸载全链路（离线 link: 装假插件 → 两步确认卸载 → 行消失）---
+  const fakeDir = join(await realpath(fsRoot), 'fake-plugin')
+  await mkdir(fakeDir)
+  await writeFile(join(fakeDir, 'package.json'), JSON.stringify({
+    name: 'fi-e2e-fake', version: '9.9.9', description: 'e2e 卸载链路专用', private: true,
+  }))
+  let seeded = false
+  try {
+    execSync(`dsh plugin --profile fi add link:${fakeDir}`, {
+      env: { ...process.env, DSH_HOME: dshHome }, stdio: 'pipe',
+    })
+    seeded = JSON.parse(await readFile(join(dshHome, 'profiles', 'fi', 'package.json'), 'utf8'))
+      .dependencies['fi-e2e-fake'] !== undefined
+  } catch { /* 夹具失败由断言兜底 */ }
+  check('0.7 插件中心：夹具——假插件经 dsh plugin add link: 装入 fi profile（离线）', seeded)
+  await evaluate(`document.querySelector('.fi-cron-head-actions .fi-cron-iconbtn')?.click()`) // 面板刷新
+  const fakeRow = await pollFor(`(() => {
+    const row = [...document.querySelectorAll('.fi-plugin-row')]
+      .find((el) => el.querySelector('.fi-plugin-name')?.textContent === 'fi-e2e-fake');
+    return row === undefined ? false : row.querySelector('.fi-plugin-ver')?.textContent === '9.9.9';
+  })()`)
+  check('0.7 插件中心：已安装区出现假插件行（刷新拉取新装清单）', fakeRow === true)
+  await evaluate(`(() => {
+    const row = [...document.querySelectorAll('.fi-plugin-row')]
+      .find((el) => el.querySelector('.fi-plugin-name')?.textContent === 'fi-e2e-fake');
+    row?.querySelector('.fi-plugin-uninstall')?.click();
+    return true;
+  })()`)
+  await sleep(400) // React 渲染异步，点击与读 DOM 分开
+  const confirmShown = await evaluate(`(() => {
+    const row = [...document.querySelectorAll('.fi-plugin-row')]
+      .find((el) => el.querySelector('.fi-plugin-name')?.textContent === 'fi-e2e-fake');
+    return row?.querySelector('.fi-plugin-uninstall')?.textContent ?? null;
+  })()`)
+  check('0.7 插件中心：卸载两步确认——首点换「确认卸载」', confirmShown !== null && confirmShown.includes('确认卸载'), JSON.stringify(confirmShown))
+  await evaluate(`(() => {
+    const row = [...document.querySelectorAll('.fi-plugin-row')]
+      .find((el) => el.querySelector('.fi-plugin-name')?.textContent === 'fi-e2e-fake');
+    row?.querySelector('.fi-plugin-uninstall')?.click();
+    return true;
+  })()`)
+  const fakeGone = await pollFor(`[...document.querySelectorAll('.fi-plugin-name')].every((el) => el.textContent !== 'fi-e2e-fake')`, 30000)
+  const pkgAfter = JSON.parse(await readFile(join(dshHome, 'profiles', 'fi', 'package.json'), 'utf8'))
+  check('0.7 插件中心：确认卸载后行消失且依赖表已清理（fi:plugins:changed 推全量）',
+    fakeGone === true && pkgAfter.dependencies['fi-e2e-fake'] === undefined)
+  await evaluate(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`)
+  await sleep(300)
+  check('0.7 插件中心：Esc 退出面板', await evaluate(`document.querySelector('.fi-plugin-empty') === null`))
+
   // --- 0.1 崩溃自动重启：杀 dsh 子进程 → 状态页 → 自动恢复 ---
   if (dshChildPid !== null) {
     const firstUrl = page.url

@@ -234,6 +234,53 @@ test('ICONS 引用的名字全部在 LUCIDE_INNER 表中（0.4 全量 Lucide 化
   // 0.5.0 点名的眼睛开关
   assert.equal(icons.eye, 'eye')
   assert.equal(icons.eyeClosed, 'eye-closed')
+  // 0.7 插件中心的安装与仓库外链
+  assert.equal(icons.pluginInstall, 'download')
+  assert.equal(icons.pluginRepo, 'external-link')
+  assert.equal(icons.pluginRemove, 'trash-2')
+})
+
+// ---------------------------------------------------------------------------
+// 0.7 插件中心推荐表
+// ---------------------------------------------------------------------------
+
+/** 提取 const 数组声明（到首个 `];`），供词典联动断言。 */
+function extractRecommended() {
+  const start = source.indexOf('const RECOMMENDED_PLUGINS = [')
+  assert.ok(start >= 0, '源码中找到 RECOMMENDED_PLUGINS')
+  const end = source.indexOf('];', start)
+  return (0, eval)(`(${source.slice(start + 'const RECOMMENDED_PLUGINS = '.length, end + 1)})`)
+}
+
+test('RECOMMENDED_PLUGINS：字段齐全、名字唯一、repo 为 GitHub https 链接', () => {
+  const recs = extractRecommended()
+  assert.ok(recs.length >= 1, '推荐表非空')
+  const names = new Set()
+  for (const rec of recs) {
+    assert.match(rec.name, /^[\w@][\w./-]*$/, `包名合法: ${rec.name}`)
+    assert.ok(typeof rec.spec === 'string' && rec.spec !== '', `spec 非空: ${rec.name}`)
+    assert.match(rec.version, /^\d+\.\d+\.\d+/, `version 是语义化版本: ${rec.name}`)
+    assert.match(rec.repo, /^https:\/\/github\.com\//, `repo 是 GitHub 链接: ${rec.name}`)
+    names.add(rec.name)
+  }
+  assert.equal(names.size, recs.length, '推荐位名字不重复')
+})
+
+test('每个推荐插件的一句话介绍词条（plugin.rec.<name>.desc）在两份词典中存在', () => {
+  for (const rec of extractRecommended()) {
+    assert.ok(`plugin.rec.${rec.name}.desc` in zh, `zh 缺 plugin.rec.${rec.name}.desc`)
+    assert.ok(`plugin.rec.${rec.name}.desc` in en, `en 缺 plugin.rec.${rec.name}.desc`)
+  }
+})
+
+test('插件中心全部词条在两份词典中齐全（plugin.* 固定键）', () => {
+  for (const key of ['plugin.title', 'plugin.subtitle', 'plugin.refresh', 'plugin.installed',
+    'plugin.installed.empty', 'plugin.recommended', 'plugin.install', 'plugin.installing',
+    'plugin.installedBadge', 'plugin.installedNote', 'plugin.installFailed', 'plugin.desktopOnly', 'plugin.repo',
+    'plugin.uninstall', 'plugin.uninstallConfirm', 'plugin.uninstalledNote', 'plugin.uninstallFailed']) {
+    assert.ok(key in zh, `zh 缺 ${key}`)
+    assert.ok(key in en, `en 缺 ${key}`)
+  }
 })
 
 test('LUCIDE_INNER 每个 path 都是合法 SVG 片段（<path>/<circle>/<rect>）', () => {

@@ -47,6 +47,9 @@ window.__ModuleLoader__.load({
 			quoteRemove: "x",
 			quoteExpand: "chevron-down",
 			quoteCollapse: "chevron-up",
+			pluginInstall: "download",
+			pluginRepo: "external-link",
+			pluginRemove: "trash-2",
 		};
 
 		/**
@@ -78,6 +81,11 @@ window.__ModuleLoader__.load({
 			"x": '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
 			"chevron-down": '<path d="m6 9 6 6 6-6"/>',
 			"chevron-up": '<path d="m18 15-6-6-6 6"/>',
+			// 插件中心（0.7）：安装按钮与仓库外链（lucide 0.544 官方 path，
+			// polyline/line 折算成 path 保持表内图元风格一致）
+			"download": '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',
+			"external-link": '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
+			"trash-2": '<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/>',
 		};
 
 		function icon(name, size) {
@@ -224,6 +232,24 @@ window.__ModuleLoader__.load({
 			"cron.validate.weekdays": "请至少选择一个星期",
 			"cron.validate.interval": "间隔至少为 1",
 			"cron.validate.maxRuns": "次数至少为 1",
+			"plugin.title": "插件中心",
+			"plugin.subtitle": "管理安装在 fi 里的 dsh 插件",
+			"plugin.refresh": "刷新",
+			"plugin.installed": "已安装",
+			"plugin.installed.empty": "还没有安装插件。可以从下方推荐一键安装，或用命令行 dsh plugin --profile fi add <包名> 自行安装。",
+			"plugin.recommended": "推荐",
+			"plugin.install": "安装",
+			"plugin.installing": "安装中…",
+			"plugin.installedBadge": "已安装",
+			"plugin.installedNote": "安装成功，重启 fi 后生效",
+			"plugin.installFailed": "安装失败：{msg}",
+			"plugin.uninstall": "卸载",
+			"plugin.uninstallConfirm": "确认卸载",
+			"plugin.uninstalledNote": "已卸载，重启 fi 后生效",
+			"plugin.uninstallFailed": "卸载失败：{msg}",
+			"plugin.desktopOnly": "插件中心仅限 fi 桌面版使用",
+			"plugin.repo": "查看 GitHub 仓库",
+			"plugin.rec.dsh-whale-widget.desc": "右下角余额小鲸鱼挂件：余额、今日已用、峰谷定价一目了然",
 			"quote.addToTask": "添加到当前任务",
 			"quote.tooLong": "单条引用过长（上限 {n} 字）",
 			"quote.count": "引用 · {n}",
@@ -359,6 +385,24 @@ window.__ModuleLoader__.load({
 			"cron.validate.weekdays": "Pick at least one weekday",
 			"cron.validate.interval": "Interval must be at least 1",
 			"cron.validate.maxRuns": "Runs must be at least 1",
+			"plugin.title": "Plugin Center",
+			"plugin.subtitle": "Manage the dsh plugins installed in fi",
+			"plugin.refresh": "Refresh",
+			"plugin.installed": "Installed",
+			"plugin.installed.empty": "No plugins installed yet. Pick one from the recommendations below, or install your own with dsh plugin --profile fi add <package>.",
+			"plugin.recommended": "Recommended",
+			"plugin.install": "Install",
+			"plugin.installing": "Installing…",
+			"plugin.installedBadge": "Installed",
+			"plugin.installedNote": "Installed. Restart fi to activate.",
+			"plugin.installFailed": "Install failed: {msg}",
+			"plugin.uninstall": "Uninstall",
+			"plugin.uninstallConfirm": "Confirm Uninstall",
+			"plugin.uninstalledNote": "Uninstalled. Restart fi to fully unload.",
+			"plugin.uninstallFailed": "Uninstall failed: {msg}",
+			"plugin.desktopOnly": "The plugin center is available in the fi desktop app only",
+			"plugin.repo": "View the GitHub repository",
+			"plugin.rec.dsh-whale-widget.desc": "A little whale widget for your DeepSeek balance, today's usage and peak/off-peak pricing",
 			"quote.addToTask": "Add to Current Task",
 			"quote.tooLong": "Selection is too long to quote (max {n} characters)",
 			"quote.count": "Quotes · {n}",
@@ -637,9 +681,49 @@ button[class*="_newSession"] { display: none !important; }
 .fi-cron-path-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   font-size: 13px; color: var(--dsw-alias-label-secondary); }
 .fi-cron-foot { display: flex; justify-content: flex-end; gap: 8px; }
-@keyframes fi-cron-fade { from { opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .fi-cron-root { animation: none; } }
-/* 选区引用（0.6）：对话记录选中文字后的悬浮菜单，portal 到 body。
+		@keyframes fi-cron-fade { from { opacity: 0; } }
+		@media (prefers-reduced-motion: reduce) { .fi-cron-root { animation: none; } }
+		/* 插件中心（0.7）：与定时任务同为右侧整页面板，骨架复用 fi-cron-root/
+		   scroll/inner/head 系列；这里只补分区标题与插件行。行样式沿 fi-cron-row
+		   的视觉语言，但不可点击（信息行 + 行尾动作）。 */
+		.fi-plugin-section { display: flex; align-items: center; gap: 6px; margin-top: 4px;
+		  color: var(--dsw-alias-label-tertiary); font-size: 12px; line-height: 18px; }
+		.fi-plugin-list { display: flex; flex-direction: column; gap: 8px; }
+		.fi-plugin-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px;
+		  border: 0.5px solid var(--dsw-alias-border-l3); border-radius: 12px;
+		  background: var(--dsw-alias-bg-layer-1); color: var(--dsw-alias-label-primary); font: inherit; }
+		.fi-plugin-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+		.fi-plugin-name-line { display: flex; align-items: center; gap: 8px; min-width: 0; }
+		.fi-plugin-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+		  font-size: 14px; font-weight: 500; line-height: 20px; }
+		.fi-plugin-ver { flex: none; padding: 1px 8px; border-radius: 6px;
+		  background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-tertiary);
+		  font-size: 12px; line-height: 18px; font-variant-numeric: tabular-nums; }
+		.fi-plugin-desc { overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+		  font-size: 12.5px; line-height: 18px; color: var(--dsw-alias-label-secondary); }
+		.fi-plugin-repo { flex: none; display: inline-flex; align-items: center; gap: 5px;
+		  color: var(--dsw-alias-label-tertiary); font-size: 12.5px; line-height: 18px;
+		  text-decoration: none; cursor: pointer; }
+		.fi-plugin-repo:hover { color: var(--dsw-alias-label-primary); }
+		.fi-plugin-repo:focus-visible { outline: 2px solid var(--dsw-alias-label-primary); outline-offset: 2px; border-radius: 4px; }
+		.fi-plugin-installed { flex: none; display: inline-flex; align-items: center; gap: 5px;
+		  color: var(--dsw-alias-label-tertiary); font-size: 13px; line-height: 18px; }
+		/* 已安装行的卸载按钮：常态安静图标钮，两步确认时展开为危险描边钮。 */
+		.fi-plugin-uninstall { flex: none; display: inline-flex; align-items: center; justify-content: center;
+		  gap: 5px; width: 28px; height: 28px; padding: 0; border: 0.5px solid transparent; border-radius: 6px;
+		  background: transparent; color: var(--dsw-alias-label-tertiary); font: inherit;
+		  font-size: 12.5px; line-height: 18px; cursor: pointer; }
+		.fi-plugin-uninstall:hover { background: var(--dsw-alias-interactive-bg-hover);
+		  color: var(--dsw-alias-state-danger-primary); }
+		.fi-plugin-uninstall:focus-visible { outline: 2px solid var(--dsw-alias-label-primary); outline-offset: -2px; }
+		.fi-plugin-uninstall:disabled { opacity: 0.5; cursor: default; }
+		.fi-plugin-uninstall--confirm { width: auto; padding: 0 10px;
+		  color: var(--dsw-alias-state-danger-primary); border-color: currentColor; }
+		.fi-plugin-empty { border: 0.5px dashed var(--dsw-alias-border-l3); border-radius: 12px;
+		  padding: 20px 16px; color: var(--dsw-alias-label-tertiary); font-size: 13px; line-height: 20px; }
+		.fi-plugin-note { color: var(--dsw-alias-state-success-primary); padding: 0 2px;
+		  font-size: 12.5px; line-height: 18px; min-height: 18px; }
+		/* 选区引用（0.6）：对话记录选中文字后的悬浮菜单，portal 到 body。
    层级压过搜索弹窗(1200)与右键菜单(1000)——它是唯一的瞬时交互层。 */
 .fi-quote-menu { position: fixed; z-index: 1300; display: flex; overflow: hidden;
   border: 0.5px solid var(--dsw-alias-border-l3); border-radius: 10px;
@@ -1124,10 +1208,11 @@ function ActionButton({ label, icon: iconName, onClick, pressed, current }) {
 			const toggleHost = useLogoRowToggleHost();
 
 			const [searchOpen, setSearchOpen] = react.useState(false);
-			// 定时任务整页面板：侧栏按钮开/关，任何会话被打开或新建任务时关闭
-			// （右侧回到对应页面，等价于退出面板）。
-			const [cronOpen, setCronOpen] = react.useState(false);
-			const closeCron = react.useCallback(() => setCronOpen(false), []);
+			// 右侧整页面板（0.5 定时任务、0.7 插件中心）：null 或面板名，单状态
+			// 天然互斥；任何会话被打开或新建任务时关闭（右侧回到对应页面，
+			// 等价于退出面板）。
+			const [page, setPage] = react.useState(null);
+			const closePage = react.useCallback(() => setPage(null), []);
 
 			const sessions = useSessions((s) => s);
 			const workspaces = useWorkspaces((s) => s);
@@ -1137,20 +1222,20 @@ function ActionButton({ label, icon: iconName, onClick, pressed, current }) {
 			const rows = react.useMemo(() => deriveRows(sessions, workspaces), [sessions, workspaces]);
 			const currentId = panelActive ? undefined : sessions.current;
 			// 「新建任务」按钮常驻高亮（aria-current=page）：右侧停在新任务页
-			// （当前会话是未发首条消息的 blank）时亮起，与「定时任务」面板打开时
-			// 的常驻样式一致；定时面板开着或切到已有任务时熄灭——两个页面级
+			// （当前会话是未发送首条消息的 blank）时亮起，与面板按钮打开时的
+			// 常驻样式一致；任一整页面板开着或切到已有任务时熄灭——页面级
 			// 高亮互斥。blank 判定与 boot pin 同款（byId[current]?.blank）。
-			const onNewTaskPage = !cronOpen && (sessions.byId[currentId]?.blank ?? false);
+			const onNewTaskPage = page === null && (sessions.byId[currentId]?.blank ?? false);
 
 			// 会话被打开（新建/搜索/列表点击/定时任务跳转）→ 右侧换页，面板随之关闭。
 			react.useEffect(() => {
-				setCronOpen(false);
+				setPage(null);
 			}, [currentId]);
 
 			const openSessionAndClose = react.useCallback((sessionId) => {
-				closeCron();
+				closePage();
 				openSession(sessionId);
-			}, [closeCron, openSession]);
+			}, [closePage, openSession]);
 
 			// ⌘K / Ctrl+K 全局唤起（ZCode 惯例）：过滤输入法组合态与长按重复，
 			// Apple 平台认 ⌘、其余认 Ctrl，修饰键须精确匹配。
@@ -1181,9 +1266,15 @@ function ActionButton({ label, icon: iconName, onClick, pressed, current }) {
 			});
 
 			const cronPanel = jsx.jsx(CronPanel, {
-				open: cronOpen,
-				onClose: closeCron,
+				open: page === "cron",
+				onClose: closePage,
 				openSession: openSessionAndClose,
+				t,
+			});
+
+			const pluginPanel = jsx.jsx(PluginCenterPanel, {
+				open: page === "plugins",
+				onClose: closePage,
 				t,
 			});
 
@@ -1220,6 +1311,7 @@ function ActionButton({ label, icon: iconName, onClick, pressed, current }) {
 						}),
 						searchDialog,
 						cronPanel,
+						pluginPanel,
 						quoteTooltip,
 					],
 				});
@@ -1232,7 +1324,7 @@ function ActionButton({ label, icon: iconName, onClick, pressed, current }) {
 						jsx.jsx(ProjectModeToggle, {
 							active: mode === "project",
 							onToggle: () => {
-								closeCron();
+								closePage();
 								switchMode(mode === "project" ? "normal" : "project");
 							},
 							t,
@@ -1248,12 +1340,12 @@ function ActionButton({ label, icon: iconName, onClick, pressed, current }) {
 					: jsx.jsxs(react.Fragment, { children: [
 						jsx.jsxs("div", { className: "fi-actions", children: [
 							jsx.jsx(ActionButton, { label: t("newTask"), icon: ICONS.newTask, current: onNewTaskPage, onClick: () => {
-								closeCron();
+								closePage();
 								startNewTask();
 							} }),
 							jsx.jsx(ActionButton, { label: t("search"), icon: ICONS.search, onClick: () => setSearchOpen(true) }),
-							jsx.jsx(ActionButton, { label: t("schedule"), icon: ICONS.schedule, pressed: cronOpen, onClick: () => setCronOpen((value) => !value) }),
-							jsx.jsx(ActionButton, { label: t("plugins"), icon: ICONS.plugins, onClick: closeCron }),
+							jsx.jsx(ActionButton, { label: t("schedule"), icon: ICONS.schedule, pressed: page === "cron", onClick: () => setPage((value) => (value === "cron" ? null : "cron")) }),
+							jsx.jsx(ActionButton, { label: t("plugins"), icon: ICONS.plugins, pressed: page === "plugins", onClick: () => setPage((value) => (value === "plugins" ? null : "plugins")) }),
 						] }),
 					jsx.jsx("div", { className: "fi-section", children:
 						jsx.jsx("span", { className: "fi-section-label", children: t("section.tasks") }),
@@ -1274,6 +1366,7 @@ function ActionButton({ label, icon: iconName, onClick, pressed, current }) {
 				] }),
 				searchDialog,
 				cronPanel,
+				pluginPanel,
 			] });
 		}
 		//#endregion
@@ -2199,6 +2292,263 @@ function ActionButton({ label, icon: iconName, onClick, pressed, current }) {
 						onClose: () => setMenu(null),
 						t,
 					}) : null,
+				] }),
+				document.body,
+			);
+		}
+		//#endregion
+
+		//#region plugin center
+		/**
+		 * 插件中心（0.7）。上区「已安装」＝ fi 专属 profile 的插件清单（「在 fi
+		 * 里安装」的边界；内置 fi-sidebar 由主进程过滤），行尾可卸载（两步确认，
+		 * 主进程转发 `dsh plugin --profile fi remove`）；下区「推荐」＝随 fi
+		 * 发版的静态推荐表，推荐位常驻不因已安装消失——未安装给「安装」按钮
+		 * （主进程转发 `dsh plugin --profile fi add`），已安装按包名匹配换成
+		 * 「已安装」徽章，卸载后自动变回安装按钮。安装/卸载都要重启 fi 才被
+		 * 运行中的 dsh 加载/卸掉，成功后以提示行说明。Electron 桥见
+		 * src/main/plugin-center.ts；缺失（浏览器直开 dsh 网页）时面板退化为
+		 * 提示行，与定时任务同款降级。
+		 */
+		const FI_PLUGINS = typeof window !== "undefined" ? window.fi?.plugins ?? null : null;
+
+		/** 推荐表（随 fi 发版人工维护）；一句话介绍走词典键 plugin.rec.<name>.desc。 */
+		const RECOMMENDED_PLUGINS = [
+			{
+				name: "dsh-whale-widget",
+				spec: "dsh-whale-widget",
+				version: "0.3.10",
+				repo: "https://github.com/MeteorNOX/DeepSeek-Balance-Whale-Widget",
+			},
+		];
+
+		/** 仓库外链：target=_blank 在 fi 里经 window.open 处理器走系统浏览器。 */
+		function PluginRepoLink({ repo, t }) {
+			return jsx.jsxs("a", {
+				className: "fi-plugin-repo",
+				href: repo,
+				target: "_blank",
+				rel: "noreferrer",
+				"aria-label": t("plugin.repo"),
+				title: t("plugin.repo"),
+				children: [icon(ICONS.pluginRepo, 14), "GitHub"],
+			});
+		}
+
+		/**
+		 * 已安装信息行：名称 + 版本 + 一句话描述（取自插件自身 package.json），
+		 * 行尾卸载按钮走两步确认（第一次点换「确认卸载」，3s 不点第二下自动
+		 * 复位，对齐定时任务删除的防误触口径）。
+		 */
+		function InstalledPluginRow({ plugin, busy, onUninstall, t }) {
+			const [confirming, setConfirming] = react.useState(false);
+			const timer = react.useRef(undefined);
+			react.useEffect(() => () => {
+				if (timer.current !== undefined) window.clearTimeout(timer.current);
+			}, []);
+			const click = () => {
+				if (confirming) {
+					if (timer.current !== undefined) window.clearTimeout(timer.current);
+					setConfirming(false);
+					onUninstall(plugin);
+					return;
+				}
+				setConfirming(true);
+				timer.current = window.setTimeout(() => setConfirming(false), 3000);
+			};
+			return jsx.jsxs("div", { className: "fi-plugin-row", children: [
+				jsx.jsxs("span", { className: "fi-plugin-main", children: [
+					jsx.jsxs("span", { className: "fi-plugin-name-line", children: [
+						jsx.jsx("span", { className: "fi-plugin-name", children: plugin.name }),
+						jsx.jsx("span", { className: "fi-plugin-ver", children: plugin.version }),
+					] }),
+					plugin.description
+						? jsx.jsx("span", { className: "fi-plugin-desc", title: plugin.description, children: plugin.description })
+						: null,
+				] }),
+				plugin.repo ? jsx.jsx(PluginRepoLink, { repo: plugin.repo, t }) : null,
+				jsx.jsx("button", {
+					type: "button",
+					className: confirming ? "fi-plugin-uninstall fi-plugin-uninstall--confirm" : "fi-plugin-uninstall",
+					"aria-label": t("plugin.uninstall"),
+					title: t("plugin.uninstall"),
+					disabled: busy,
+					onClick: click,
+					children: confirming ? t("plugin.uninstallConfirm") : icon(ICONS.pluginRemove, 14),
+				}),
+			] });
+		}
+
+		/** 推荐行：行尾按安装状态切换 安装 / 安装中… / 已安装。 */
+		function RecommendedPluginRow({ rec, state, busy, onInstall, t }) {
+			const action = state === "installed"
+				? jsx.jsxs("span", { className: "fi-plugin-installed", children: [
+					icon(ICONS.cronDone, 14),
+					t("plugin.installedBadge"),
+				] })
+				: jsx.jsx("button", {
+					type: "button",
+					className: "fi-cron-btn fi-cron-btn--primary",
+					disabled: busy || state === "installing",
+					onClick: () => onInstall(rec),
+					children: state === "installing"
+						? t("plugin.installing")
+						: [icon(ICONS.pluginInstall, 14), t("plugin.install")],
+				});
+			return jsx.jsxs("div", { className: "fi-plugin-row", children: [
+				jsx.jsxs("span", { className: "fi-plugin-main", children: [
+					jsx.jsxs("span", { className: "fi-plugin-name-line", children: [
+						jsx.jsx("span", { className: "fi-plugin-name", children: rec.name }),
+						jsx.jsx("span", { className: "fi-plugin-ver", children: rec.version }),
+					] }),
+					jsx.jsx("span", { className: "fi-plugin-desc", children: t(`plugin.rec.${rec.name}.desc`) }),
+				] }),
+				jsx.jsx(PluginRepoLink, { repo: rec.repo, t }),
+				action,
+			] });
+		}
+
+		function PluginCenterPanel({ open, onClose, t }) {
+			const [installed, setInstalled] = react.useState(null);
+			const [installing, setInstalling] = react.useState(null);
+			const [removing, setRemoving] = react.useState(null);
+			const [alert, setAlert] = react.useState(null);
+			const [note, setNote] = react.useState(null);
+			const noteTimer = react.useRef(undefined);
+			const sidebarWidth = useSidebarWidth(open);
+
+			// 打开即复位并拉一次全量。
+			react.useEffect(() => {
+				if (!open) return;
+				setInstalling(null);
+				setRemoving(null);
+				setAlert(null);
+				setNote(null);
+				if (FI_PLUGINS !== null) {
+					FI_PLUGINS.list().then((r) => {
+						setInstalled(r?.ok === true && Array.isArray(r.plugins) ? r.plugins : []);
+					}).catch(() => setInstalled([]));
+				}
+			}, [open]);
+
+			// 主进程安装成功后推全量；仅面板打开期间订阅。
+			react.useEffect(() => {
+				if (!open || FI_PLUGINS === null) return undefined;
+				return FI_PLUGINS.onChanged((next) => setInstalled(Array.isArray(next) ? next : []));
+			}, [open]);
+
+			// Esc 退出面板。
+			react.useEffect(() => {
+				if (!open) return undefined;
+				const onKey = (event) => {
+					if (event.isComposing || event.key !== "Escape") return;
+					onClose();
+				};
+				document.addEventListener("keydown", onKey);
+				return () => document.removeEventListener("keydown", onKey);
+			}, [open, onClose]);
+
+			const showNote = (text) => {
+				setNote(text);
+				if (noteTimer.current !== undefined) window.clearTimeout(noteTimer.current);
+				noteTimer.current = window.setTimeout(() => setNote(null), 3000);
+			};
+
+			if (!open) return null;
+
+			if (FI_PLUGINS === null) {
+				return reactDom.createPortal(
+					jsx.jsx("div", { className: "fi-cron-root", style: { left: sidebarWidth }, children:
+						jsx.jsx("div", { className: "fi-cron-inner", children:
+							jsx.jsx("div", { className: "fi-cron-note", children: t("plugin.desktopOnly") }) }) }),
+					document.body,
+				);
+			}
+
+			const refresh = () => FI_PLUGINS.list().then((r) => {
+				setInstalled(r?.ok === true && Array.isArray(r.plugins) ? r.plugins : []);
+			}).catch(() => {});
+
+			const install = (rec) => {
+				if (installing !== null) return;
+				setInstalling(rec.spec);
+				setAlert(null);
+				FI_PLUGINS.install(rec.spec).then((r) => {
+					setInstalling(null);
+					if (r?.ok === true) showNote(t("plugin.installedNote"));
+					else setAlert(format(t("plugin.installFailed"), { msg: r?.error ?? "" }));
+				}).catch((err) => {
+					setInstalling(null);
+					setAlert(format(t("plugin.installFailed"), { msg: err?.message ?? String(err) }));
+				});
+			};
+
+			const uninstall = (plugin) => {
+				if (removing !== null) return;
+				setRemoving(plugin.name);
+				setAlert(null);
+				FI_PLUGINS.remove(plugin.name).then((r) => {
+					setRemoving(null);
+					if (r?.ok === true) showNote(t("plugin.uninstalledNote"));
+					else setAlert(format(t("plugin.uninstallFailed"), { msg: r?.error ?? "" }));
+				}).catch((err) => {
+					setRemoving(null);
+					setAlert(format(t("plugin.uninstallFailed"), { msg: err?.message ?? String(err) }));
+				});
+			};
+
+			// 已安装判定按包名匹配推荐位；空表（未初始化 profile / 只剩内置）走空态提示。
+			const installedNames = new Set((installed ?? []).map((p) => p.name));
+
+			let installedBody;
+			if (installed === null) {
+				installedBody = jsx.jsx("div", { className: "fi-cron-note", children: t("empty.loading") });
+			} else if (installed.length === 0) {
+				installedBody = jsx.jsx("div", { className: "fi-plugin-empty", children: t("plugin.installed.empty") });
+			} else {
+				installedBody = jsx.jsx("div", { className: "fi-plugin-list", children:
+					installed.map((plugin) => jsx.jsx(InstalledPluginRow, {
+						plugin,
+						busy: removing === plugin.name,
+						onUninstall: uninstall,
+						t,
+					}, plugin.name)) });
+			}
+
+			return reactDom.createPortal(
+				jsx.jsxs("div", { className: "fi-cron-root", style: { left: sidebarWidth }, children: [
+					jsx.jsx("div", { className: "fi-cron-scroll", children:
+						jsx.jsxs("div", { className: "fi-cron-inner", children: [
+							jsx.jsxs("div", { className: "fi-cron-head", children: [
+								jsx.jsxs("div", { className: "fi-cron-heading", children: [
+									jsx.jsxs("span", { className: "fi-cron-title", children: [
+										icon(ICONS.plugins, 20),
+										t("plugin.title"),
+									] }),
+									jsx.jsx("span", { className: "fi-cron-sub", children: t("plugin.subtitle") }),
+								] }),
+								jsx.jsxs("div", { className: "fi-cron-head-actions", children: [
+									jsx.jsx("button", { type: "button", className: "fi-cron-btn fi-cron-iconbtn",
+										"aria-label": t("plugin.refresh"), title: t("plugin.refresh"),
+										onClick: refresh,
+										children: icon(ICONS.refresh, 14) }),
+								] }),
+							] }),
+							jsx.jsx("span", { className: "fi-plugin-section", children: t("plugin.installed") }),
+							installedBody,
+							jsx.jsx("span", { className: "fi-plugin-section", children: t("plugin.recommended") }),
+							note !== null ? jsx.jsx("div", { className: "fi-plugin-note", children: note }) : null,
+							alert !== null ? jsx.jsx("div", { className: "fi-cron-alert", children: alert }) : null,
+							jsx.jsx("div", { className: "fi-plugin-list", children:
+								RECOMMENDED_PLUGINS.map((rec) => jsx.jsx(RecommendedPluginRow, {
+									rec,
+									state: installedNames.has(rec.name) ? "installed"
+										: installing === rec.spec ? "installing" : "idle",
+									busy: installing !== null,
+									onInstall: install,
+									t,
+								}, rec.name)) }),
+						] }) }),
 				] }),
 				document.body,
 			);
