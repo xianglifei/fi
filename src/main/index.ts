@@ -1,13 +1,13 @@
 import { app, BrowserWindow, ipcMain } from 'electron'
 import { DshProcess } from './dsh-process'
 import { attachCloseGuard } from './close-guard'
+import { registerCronBridge } from './cron'
 import { installMenu } from './menu'
 import { registerFsBridge } from './fs-bridge'
 import { createMainWindow, setDshOrigin } from './window'
 
 const dsh = new DshProcess()
 let win: BrowserWindow | null = null
-let wiredWindow: BrowserWindow | null = null
 let lastUrl: string | null = null
 let dshDisposed = false
 
@@ -30,20 +30,21 @@ function statusPage(title: string, detail: string, retryable: boolean): string {
   return `data:text/html;charset=utf-8,${encodeURIComponent(html)}`
 }
 
-function wireDsh(w: BrowserWindow): void {
-  if (wiredWindow === w) return
-  wiredWindow = w
-  dsh.removeAllListeners('url')
-  dsh.removeAllListeners('state')
-  dsh.removeAllListeners('error')
-
+/**
+ * dsh 事件只接一次：处理器引用模块级 win（当前窗口），而非闭包捕获的旧窗口。
+ * 此前 wireDsh 每次接线都 removeAllListeners，会把 cron 桥等其它模块订阅的
+ * url 监听一并清掉——定时任务调度器因此拿不到握手 URL，整个静默失效。
+ */
+function wireDshOnce(): void {
   dsh.on('url', (url: string) => {
     lastUrl = url
     setDshOrigin(url)
-    if (!w.isDestroyed()) void w.loadURL(url)
+    const w = win
+    if (w !== null && !w.isDestroyed()) void w.loadURL(url)
   })
   dsh.on('state', (state: string) => {
-    if (w.isDestroyed()) return
+    const w = win
+    if (w === null || w.isDestroyed()) return
     if (state === 'restarting') {
       void w.loadURL(statusPage('与 dsh 的连接断开', 'dsh 正在重启，稍候会自动恢复…', false))
     } else if (state === 'failed') {
@@ -65,7 +66,6 @@ function showWindow(): BrowserWindow {
   }
   win = createMainWindow()
   attachCloseGuard(win)
-  wireDsh(win)
   return win
 }
 
@@ -79,11 +79,17 @@ function reopenAfterActivate(): void {
   // while starting/restarting the url/state events drive the window
 }
 
+app.setName('fi')
+// 冒烟/多开隔离：单实例锁与用户数据都跟着 userData 走（正常路径不受影响）。
+// 必须在 requestSingleInstanceLock 之前设置——锁按 userData 路径区分实例。
+if (process.env.FI_USER_DATA_DIR !== undefined && process.env.FI_USER_DATA_DIR !== '') {
+  app.setPath('userData', process.env.FI_USER_DATA_DIR)
+}
+
 const gotLock = app.requestSingleInstanceLock()
 if (!gotLock) {
   app.quit()
 } else {
-  app.setName('fi')
 
   app.on('second-instance', () => {
     reopenAfterActivate()
@@ -92,6 +98,8 @@ if (!gotLock) {
   app.whenReady().then(() => {
     installMenu()
     registerFsBridge()
+    wireDshOnce()
+    registerCronBridge(dsh)
     showWindow()
     dsh.start()
   })

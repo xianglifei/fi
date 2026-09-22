@@ -16,6 +16,24 @@ contextBridge.exposeInMainWorld('fi', {
   clipboard: {
     write: (text: string) => ipcRenderer.invoke('fi:clipboard:write', text),
   },
+
+  // --- 定时任务桥（见 src/main/cron.ts）---
+  // list/changed 推全量任务数组（≤20 条，无分页）；写操作返回 {ok, error?}。
+  cron: {
+    list: () => ipcRenderer.invoke('fi:cron:list'),
+    create: (draft: unknown) => ipcRenderer.invoke('fi:cron:create', draft),
+    update: (id: string, draft: unknown) => ipcRenderer.invoke('fi:cron:update', { id, draft }),
+    remove: (id: string) => ipcRenderer.invoke('fi:cron:delete', id),
+    setEnabled: (id: string, enabled: boolean) => ipcRenderer.invoke('fi:cron:setEnabled', { id, enabled }),
+    runNow: (id: string) => ipcRenderer.invoke('fi:cron:runNow', id),
+    pickFolder: () => ipcRenderer.invoke('fi:cron:pickFolder'),
+    defaultDir: () => ipcRenderer.invoke('fi:cron:defaultDir'),
+    onChanged: (callback: (tasks: unknown[]) => void) => {
+      const handler = (_event: unknown, tasks: unknown[]) => callback(tasks)
+      ipcRenderer.on('fi:cron:changed', handler)
+      return () => ipcRenderer.removeListener('fi:cron:changed', handler)
+    },
+  },
 })
 
 // --- busy watcher (drives the close confirmation in the main process) ---

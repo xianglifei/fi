@@ -38,6 +38,11 @@ window.__ModuleLoader__.load({
 			copyPath: "copy",
 			reveal: "arrow-up-right",
 			open: "folder-open",
+			cronActive: "clock",
+			cronPaused: "circle-pause",
+			cronDone: "circle-check",
+			cronFailed: "triangle-alert",
+			cronMore: "ellipsis",
 		};
 
 		/**
@@ -59,6 +64,11 @@ window.__ModuleLoader__.load({
 			"eye-closed": '<path d="m15 18-.722-3.25"/><path d="M2 8a10.645 10.645 0 0 0 20 0"/><path d="m20 15-1.726-2.05"/><path d="m4 15 1.726-2.05"/><path d="m9 18 .722-3.25"/>',
 			"copy": '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
 			"arrow-up-right": '<path d="M7 7h10v10"/><path d="M7 17 17 7"/>',
+			"clock": '<path d="M12 6v6l4 2"/><circle cx="12" cy="12" r="10"/>',
+			"circle-check": '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+			"circle-pause": '<circle cx="12" cy="12" r="10"/><path d="M10 9v6"/><path d="M14 9v6"/>',
+			"triangle-alert": '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+			"ellipsis": '<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
 		};
 
 		function icon(name, size) {
@@ -123,6 +133,87 @@ window.__ModuleLoader__.load({
 			"time.days": "{n}天",
 			"time.months": "{n}个月",
 			"time.years": "{n}年",
+			"cron.title": "定时任务",
+			"cron.subtitle": "按计划自动新建会话并执行提示词",
+			"cron.refresh": "刷新",
+			"cron.create": "新建任务",
+			"cron.desktopOnly": "定时任务仅限 fi 桌面版使用",
+			"cron.empty.title": "还没有定时任务",
+			"cron.filter.all": "全部",
+			"cron.filter.inProgress": "进行中",
+			"cron.filter.completed": "已完成",
+			"cron.filter.failed": "失败",
+			"cron.filter.empty": "没有符合条件的任务",
+			"cron.status.active": "运行中",
+			"cron.status.paused": "已暂停",
+			"cron.status.completed": "已完成",
+			"cron.status.failed": "已失败",
+			"cron.count": "已运行 {n} 次",
+			"cron.next": "下次运行 {when}",
+			"cron.soon": "即将运行",
+			"cron.in.minutes": "{n} 分钟后",
+			"cron.in.hours": "{n} 小时后",
+			"cron.in.days": "{n} 天后",
+			"cron.schedule.everyMinutes": "每 {n} 分钟",
+			"cron.schedule.daily": "每天 {time}",
+			"cron.schedule.weekly": "每周{days} {time}",
+			"cron.schedule.monthly": "每月 {day} 日 {time}",
+			"cron.join": "、",
+			"cron.weekday.0": "日",
+			"cron.weekday.1": "一",
+			"cron.weekday.2": "二",
+			"cron.weekday.3": "三",
+			"cron.weekday.4": "四",
+			"cron.weekday.5": "五",
+			"cron.weekday.6": "六",
+			"cron.lastError": "上次运行失败",
+			"cron.menu.runNow": "立即运行",
+			"cron.menu.openSession": "打开最近会话",
+			"cron.menu.enable": "重新启用",
+			"cron.menu.pause": "暂停",
+			"cron.menu.resume": "恢复",
+			"cron.menu.edit": "编辑",
+			"cron.menu.delete": "删除",
+			"cron.menu.confirmDelete": "确认删除",
+			"cron.op.failed": "操作失败：{msg}",
+			"cron.form.newTitle": "新建定时任务",
+			"cron.form.editTitle": "编辑定时任务",
+			"cron.form.name": "标题",
+			"cron.form.namePlaceholder": "例如：每天早上检查一次构建",
+			"cron.form.location": "执行位置",
+			"cron.form.locationDefault": "默认工作区",
+			"cron.form.locationFolder": "项目文件夹",
+			"cron.form.locationDefaultHint": "运行会话进入普通模式任务清单",
+			"cron.form.locationFolderHint": "运行会话归属该文件夹的项目工作区",
+			"cron.form.pick": "选择文件夹…",
+			"cron.form.noFolder": "未选择文件夹",
+			"cron.form.repeat": "重复",
+			"cron.form.unit.minute": "每 N 分钟",
+			"cron.form.unit.day": "按天",
+			"cron.form.unit.week": "按周",
+			"cron.form.unit.month": "按月",
+			"cron.form.interval": "间隔",
+			"cron.form.intervalUnit.minutes": "分钟",
+			"cron.form.intervalUnit.days": "天",
+			"cron.form.intervalUnit.weeks": "周",
+			"cron.form.intervalUnit.months": "个月",
+			"cron.form.time": "时间",
+			"cron.form.weekdays": "星期",
+			"cron.form.monthDay": "日期（1-28）",
+			"cron.form.plan": "次数上限",
+			"cron.form.plan.forever": "不限",
+			"cron.form.plan.limited": "限 N 次",
+			"cron.form.maxRuns": "次数",
+			"cron.form.prompt": "提示词",
+			"cron.form.promptPlaceholder": "每次触发时要 agent 做什么",
+			"cron.form.save": "保存",
+			"cron.form.cancel": "取消",
+			"cron.form.saving": "保存中…",
+			"cron.validate.name": "请填写标题",
+			"cron.validate.prompt": "请填写提示词",
+			"cron.validate.folder": "请选择项目文件夹",
+			"cron.validate.weekdays": "请至少选择一个星期",
+			"cron.validate.maxRuns": "次数至少为 1",
 		};
 		const en = {
 			"newTask": "New Task",
@@ -164,6 +255,87 @@ window.__ModuleLoader__.load({
 			"time.days": "{n}d",
 			"time.months": "{n}mo",
 			"time.years": "{n}y",
+			"cron.title": "Scheduled Tasks",
+			"cron.subtitle": "Create sessions and run prompts on a schedule",
+			"cron.refresh": "Refresh",
+			"cron.create": "New Task",
+			"cron.desktopOnly": "Scheduled tasks are available in the fi desktop app only",
+			"cron.empty.title": "No scheduled tasks yet",
+			"cron.filter.all": "All",
+			"cron.filter.inProgress": "In Progress",
+			"cron.filter.completed": "Completed",
+			"cron.filter.failed": "Failed",
+			"cron.filter.empty": "No tasks match this filter",
+			"cron.status.active": "Active",
+			"cron.status.paused": "Paused",
+			"cron.status.completed": "Completed",
+			"cron.status.failed": "Failed",
+			"cron.count": "Ran {n} times",
+			"cron.next": "Next run {when}",
+			"cron.soon": "Running soon",
+			"cron.in.minutes": "in {n} min",
+			"cron.in.hours": "in {n} h",
+			"cron.in.days": "in {n} d",
+			"cron.schedule.everyMinutes": "Every {n} min",
+			"cron.schedule.daily": "Daily at {time}",
+			"cron.schedule.weekly": "Weekly on {days} at {time}",
+			"cron.schedule.monthly": "Monthly on day {day} at {time}",
+			"cron.join": ", ",
+			"cron.weekday.0": "Sun",
+			"cron.weekday.1": "Mon",
+			"cron.weekday.2": "Tue",
+			"cron.weekday.3": "Wed",
+			"cron.weekday.4": "Thu",
+			"cron.weekday.5": "Fri",
+			"cron.weekday.6": "Sat",
+			"cron.lastError": "Last run failed",
+			"cron.menu.runNow": "Run Now",
+			"cron.menu.openSession": "Open Last Session",
+			"cron.menu.enable": "Re-enable",
+			"cron.menu.pause": "Pause",
+			"cron.menu.resume": "Resume",
+			"cron.menu.edit": "Edit",
+			"cron.menu.delete": "Delete",
+			"cron.menu.confirmDelete": "Confirm Delete",
+			"cron.op.failed": "Action failed: {msg}",
+			"cron.form.newTitle": "New Scheduled Task",
+			"cron.form.editTitle": "Edit Scheduled Task",
+			"cron.form.name": "Title",
+			"cron.form.namePlaceholder": "e.g. Morning build check",
+			"cron.form.location": "Run In",
+			"cron.form.locationDefault": "Default Workspace",
+			"cron.form.locationFolder": "Project Folder",
+			"cron.form.locationDefaultHint": "Runs appear in the normal-mode task list",
+			"cron.form.locationFolderHint": "Runs are filed under that folder's project workspace",
+			"cron.form.pick": "Choose Folder…",
+			"cron.form.noFolder": "No folder selected",
+			"cron.form.repeat": "Repeat",
+			"cron.form.unit.minute": "Every N minutes",
+			"cron.form.unit.day": "Daily",
+			"cron.form.unit.week": "Weekly",
+			"cron.form.unit.month": "Monthly",
+			"cron.form.interval": "Interval",
+			"cron.form.intervalUnit.minutes": "min",
+			"cron.form.intervalUnit.days": "days",
+			"cron.form.intervalUnit.weeks": "weeks",
+			"cron.form.intervalUnit.months": "months",
+			"cron.form.time": "Time",
+			"cron.form.weekdays": "Weekdays",
+			"cron.form.monthDay": "Day of month (1-28)",
+			"cron.form.plan": "Run Limit",
+			"cron.form.plan.forever": "Unlimited",
+			"cron.form.plan.limited": "Limited to N runs",
+			"cron.form.maxRuns": "Runs",
+			"cron.form.prompt": "Prompt",
+			"cron.form.promptPlaceholder": "What the agent should do on each run",
+			"cron.form.save": "Save",
+			"cron.form.cancel": "Cancel",
+			"cron.form.saving": "Saving…",
+			"cron.validate.name": "Enter a title",
+			"cron.validate.prompt": "Enter a prompt",
+			"cron.validate.folder": "Choose a project folder",
+			"cron.validate.weekdays": "Pick at least one weekday",
+			"cron.validate.maxRuns": "Runs must be at least 1",
 		};
 
 		/** 词典键对应的参数：time.* 接 {n}。 */
@@ -187,6 +359,7 @@ button[class*="_newSession"] { display: none !important; }
   cursor: pointer; white-space: nowrap; }
 .fi-region--rail .fi-action { justify-content: center; padding: 0; }
 .fi-action:hover { background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-primary); }
+.fi-action[aria-pressed="true"] { background: var(--dsw-alias-interactive-bg-active); color: var(--dsw-alias-label-primary); }
 .fi-action:focus-visible { outline: 2px solid var(--dsw-alias-label-primary); outline-offset: -2px; }
 .fi-action--primary { height: 38px; border: 0.5px solid var(--dsw-alias-border-l3);
   background: var(--dsw-alias-button-elevated-fill, var(--dsw-alias-bg-layer-1));
@@ -320,6 +493,108 @@ button[class*="_newSession"] { display: none !important; }
 @keyframes fi-search-fade { from { opacity: 0; } }
 @keyframes fi-search-pop { from { opacity: 0; transform: scale(0.97); } }
 @media (prefers-reduced-motion: reduce) { .fi-search-backdrop, .fi-search-panel { animation: none; } }
+/* 定时任务面板：portal 到 body 的整页覆盖层，左缘内联 style.left 跟随侧栏宽度。
+   层级低于右键菜单(1000)与搜索弹窗(1200)，高于普通页面内容。 */
+.fi-cron-root { position: fixed; top: 0; right: 0; bottom: 0; z-index: 900;
+  background: var(--dsw-alias-bg-layer-1); display: flex; flex-direction: column;
+  animation: fi-cron-fade 0.14s ease-out; }
+.fi-cron-scroll { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: thin;
+  scrollbar-color: var(--dsh-scrollbar-thumb, transparent) transparent; }
+.fi-cron-inner { max-width: 860px; margin: 0 auto; padding: 28px 32px 48px;
+  display: flex; flex-direction: column; gap: 16px; width: 100%; box-sizing: border-box; }
+.fi-cron-head { display: flex; align-items: flex-end; gap: 12px; }
+.fi-cron-heading { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.fi-cron-title { display: flex; align-items: center; gap: 8px;
+  font-size: 20px; font-weight: 600; line-height: 28px; color: var(--dsw-alias-label-primary); }
+.fi-cron-sub { color: var(--dsw-alias-label-tertiary); font-size: 13px; line-height: 18px; }
+.fi-cron-head-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; flex: none; }
+.fi-cron-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: 32px; padding: 0 12px; border-radius: 8px; border: 0.5px solid var(--dsw-alias-border-l3);
+  background: var(--dsw-alias-bg-layer-1); color: var(--dsw-alias-label-primary);
+  font: inherit; font-size: 13px; line-height: 18px; cursor: pointer; white-space: nowrap; }
+.fi-cron-btn:hover { background: var(--dsw-alias-interactive-bg-hover); }
+.fi-cron-btn:focus-visible { outline: 2px solid var(--dsw-alias-label-primary); outline-offset: -2px; }
+.fi-cron-btn:disabled { opacity: 0.5; cursor: default; }
+.fi-cron-btn--primary { background: var(--dsw-alias-label-primary); color: var(--dsw-alias-bg-layer-1);
+  border-color: transparent; font-weight: 500; }
+.fi-cron-btn--primary:hover { opacity: 0.92; background: var(--dsw-alias-label-primary); }
+.fi-cron-btn--danger { color: var(--dsw-alias-state-danger-primary); border-color: currentColor; background: transparent; }
+.fi-cron-iconbtn { width: 32px; padding: 0; }
+.fi-cron-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.fi-cron-chip { height: 26px; padding: 0 12px; border: none; border-radius: 999px;
+  background: transparent; color: var(--dsw-alias-label-tertiary);
+  font: inherit; font-size: 13px; cursor: pointer; }
+.fi-cron-chip:hover { background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-primary); }
+.fi-cron-chip:focus-visible { outline: 2px solid var(--dsw-alias-label-primary); outline-offset: -2px; }
+.fi-cron-chip[aria-pressed="true"] { background: var(--dsw-alias-interactive-bg-active);
+  color: var(--dsw-alias-label-primary); font-weight: 500; }
+.fi-cron-list { display: flex; flex-direction: column; gap: 8px; }
+.fi-cron-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px;
+  border: 0.5px solid var(--dsw-alias-border-l3); border-radius: 12px;
+  background: var(--dsw-alias-bg-layer-1); color: var(--dsw-alias-label-primary);
+  font: inherit; text-align: left; cursor: pointer; }
+.fi-cron-row:hover { background: var(--dsw-alias-interactive-bg-hover); }
+.fi-cron-row:focus-visible { outline: 2px solid var(--dsw-alias-label-primary); outline-offset: -2px; }
+/* 已完成任务静态弱化（对齐 ZCode：hover 不恢复） */
+.fi-cron-row--done { opacity: 0.6; }
+.fi-cron-row--done:hover { background: var(--dsw-alias-bg-layer-1); }
+.fi-cron-status { flex: none; display: inline-flex; }
+.fi-cron-status--active { color: var(--dsw-alias-state-success-primary); }
+.fi-cron-status--paused, .fi-cron-status--completed { color: var(--dsw-alias-label-tertiary); }
+.fi-cron-status--failed { color: var(--dsw-alias-state-danger-primary); }
+.fi-cron-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.fi-cron-name { font-size: 14px; font-weight: 500; line-height: 20px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fi-cron-meta { display: flex; align-items: center; gap: 8px; min-width: 0;
+  font-size: 12.5px; line-height: 18px; color: var(--dsw-alias-label-tertiary); }
+.fi-cron-badge { display: inline-flex; align-items: center; gap: 4px; min-width: 0;
+  padding: 1px 8px 1px 5px; border-radius: 6px;
+  background: color-mix(in srgb, var(--dsw-alias-state-success-primary) 12%, transparent);
+  color: var(--dsw-alias-state-success-primary); }
+.fi-cron-badge--dim { opacity: 0.55; }
+.fi-cron-badge-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fi-cron-failed { flex: none; display: inline-flex; align-items: center; gap: 4px;
+  color: var(--dsw-alias-state-danger-primary); }
+.fi-cron-count { flex: none; }
+.fi-cron-more { flex: none; width: 28px; height: 28px; border: none; border-radius: 6px;
+  background: transparent; color: var(--dsw-alias-label-tertiary); cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+.fi-cron-more:hover { background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-primary); }
+.fi-cron-empty { border: 0.5px dashed var(--dsw-alias-border-l3); border-radius: 16px; min-height: 226px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+  color: var(--dsw-alias-label-tertiary); font-size: 14px; }
+.fi-cron-note { color: var(--dsw-alias-label-tertiary); padding: 12px 2px; font-size: 13px; }
+.fi-cron-alert { color: var(--dsw-alias-state-danger-primary); padding: 0 2px; font-size: 12.5px; min-height: 18px; }
+.fi-cron-form { display: flex; flex-direction: column; gap: 16px; }
+.fi-cron-field { display: flex; flex-direction: column; gap: 6px; }
+.fi-cron-label { font-size: 13px; line-height: 20px; color: var(--dsw-alias-label-secondary); }
+.fi-cron-hint { font-size: 12px; line-height: 17px; color: var(--dsw-alias-label-tertiary); }
+.fi-cron-input, .fi-cron-textarea { border: 0.5px solid var(--dsw-alias-border-l4); border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-1); color: var(--dsw-alias-label-primary);
+  font: inherit; font-size: 13.5px; line-height: 20px; padding: 7px 10px; outline: none; min-width: 0; }
+.fi-cron-input:focus-visible, .fi-cron-textarea:focus-visible { border-color: var(--dsw-alias-label-tertiary); }
+.fi-cron-textarea { resize: vertical; min-height: 96px; }
+.fi-cron-seg { display: inline-flex; gap: 2px; padding: 2px; border-radius: 10px;
+  background: var(--dsw-alias-interactive-bg-hover); width: fit-content; }
+.fi-cron-seg > button { border: none; border-radius: 8px; background: transparent; height: 28px;
+  padding: 0 12px; color: var(--dsw-alias-label-secondary); font: inherit; font-size: 13px; cursor: pointer; }
+.fi-cron-seg > button:focus-visible { outline: 2px solid var(--dsw-alias-label-primary); outline-offset: -2px; }
+.fi-cron-seg > button[aria-pressed="true"] { background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-primary); font-weight: 500; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08); }
+.fi-cron-grid2 { display: grid; grid-template-columns: auto auto; gap: 12px 24px; justify-content: start; }
+.fi-cron-wd { display: flex; gap: 4px; flex-wrap: wrap; }
+.fi-cron-wd > button { width: 34px; height: 28px; border-radius: 8px;
+  border: 0.5px solid var(--dsw-alias-border-l3); background: transparent;
+  color: var(--dsw-alias-label-secondary); font: inherit; font-size: 12.5px; cursor: pointer; }
+.fi-cron-wd > button:focus-visible { outline: 2px solid var(--dsw-alias-label-primary); outline-offset: -2px; }
+.fi-cron-wd > button[aria-pressed="true"] { background: var(--dsw-alias-interactive-bg-active);
+  color: var(--dsw-alias-label-primary); border-color: transparent; }
+.fi-cron-path { display: flex; align-items: center; gap: 8px; }
+.fi-cron-path-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 13px; color: var(--dsw-alias-label-secondary); }
+.fi-cron-foot { display: flex; justify-content: flex-end; gap: 8px; }
+@keyframes fi-cron-fade { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .fi-cron-root { animation: none; } }
 `;
 		const CSS_TAG_ID = "fi-sidebar/sidebar.css";
 		if (typeof document !== "undefined" && document.querySelector(`style[data-plugin-css="${CSS_TAG_ID}"]`) === null) {
@@ -430,11 +705,12 @@ button[class*="_newSession"] { display: none !important; }
 		//#endregion
 
 		//#region components
-		function ActionButton({ label, primary, icon: iconName, onClick }) {
+		function ActionButton({ label, primary, icon: iconName, onClick, pressed }) {
 			return jsx.jsx("button", {
 				type: "button",
 				className: primary ? "fi-action fi-action--primary" : "fi-action",
 				"aria-label": label,
+				"aria-pressed": pressed === undefined ? undefined : pressed ? "true" : "false",
 				onClick,
 				children: [icon(iconName, primary ? 16 : 18), jsx.jsx("span", { children: label })],
 			});
@@ -743,6 +1019,10 @@ button[class*="_newSession"] { display: none !important; }
 			const toggleHost = useLogoRowToggleHost();
 
 			const [searchOpen, setSearchOpen] = react.useState(false);
+			// 定时任务整页面板：侧栏按钮开/关，任何会话被打开或新建任务时关闭
+			// （右侧回到对应页面，等价于退出面板）。
+			const [cronOpen, setCronOpen] = react.useState(false);
+			const closeCron = react.useCallback(() => setCronOpen(false), []);
 
 			const sessions = useSessions((s) => s);
 			const workspaces = useWorkspaces((s) => s);
@@ -751,6 +1031,16 @@ button[class*="_newSession"] { display: none !important; }
 
 			const rows = react.useMemo(() => deriveRows(sessions, workspaces), [sessions, workspaces]);
 			const currentId = panelActive ? undefined : sessions.current;
+
+			// 会话被打开（新建/搜索/列表点击/定时任务跳转）→ 右侧换页，面板随之关闭。
+			react.useEffect(() => {
+				setCronOpen(false);
+			}, [currentId]);
+
+			const openSessionAndClose = react.useCallback((sessionId) => {
+				closeCron();
+				openSession(sessionId);
+			}, [closeCron, openSession]);
 
 			// ⌘K / Ctrl+K 全局唤起（ZCode 惯例）：过滤输入法组合态与长按重复，
 			// Apple 平台认 ⌘、其余认 Ctrl，修饰键须精确匹配。
@@ -775,8 +1065,15 @@ button[class*="_newSession"] { display: none !important; }
 				workspaces,
 				searchSessions,
 				searchResultLimit,
-				onOpenSession: openSession,
+				onOpenSession: openSessionAndClose,
 				onClose: () => setSearchOpen(false),
+				t,
+			});
+
+			const cronPanel = jsx.jsx(CronPanel, {
+				open: cronOpen,
+				onClose: closeCron,
+				openSession: openSessionAndClose,
 				t,
 			});
 
@@ -793,6 +1090,7 @@ button[class*="_newSession"] { display: none !important; }
 							children: icon(ICONS.search, 18),
 						}),
 						searchDialog,
+						cronPanel,
 					],
 				});
 			}
@@ -803,7 +1101,10 @@ button[class*="_newSession"] { display: none !important; }
 					? reactDom.createPortal(
 						jsx.jsx(ProjectModeToggle, {
 							active: mode === "project",
-							onToggle: () => switchMode(mode === "project" ? "normal" : "project"),
+							onToggle: () => {
+								closeCron();
+								switchMode(mode === "project" ? "normal" : "project");
+							},
 							t,
 						}),
 						toggleHost,
@@ -814,10 +1115,13 @@ button[class*="_newSession"] { display: none !important; }
 					? jsx.jsx(FileBrowser, { startNewTaskIn, t })
 					: jsx.jsxs(react.Fragment, { children: [
 						jsx.jsxs("div", { className: "fi-actions", children: [
-							jsx.jsx(ActionButton, { label: t("newTask"), primary: true, icon: ICONS.newTask, onClick: startNewTask }),
+							jsx.jsx(ActionButton, { label: t("newTask"), primary: true, icon: ICONS.newTask, onClick: () => {
+								closeCron();
+								startNewTask();
+							} }),
 							jsx.jsx(ActionButton, { label: t("search"), icon: ICONS.search, onClick: () => setSearchOpen(true) }),
-							jsx.jsx(ActionButton, { label: t("schedule"), icon: ICONS.schedule, onClick: () => {} }),
-							jsx.jsx(ActionButton, { label: t("plugins"), icon: ICONS.plugins, onClick: () => {} }),
+							jsx.jsx(ActionButton, { label: t("schedule"), icon: ICONS.schedule, pressed: cronOpen, onClick: () => setCronOpen((value) => !value) }),
+							jsx.jsx(ActionButton, { label: t("plugins"), icon: ICONS.plugins, onClick: closeCron }),
 						] }),
 					jsx.jsx("div", { className: "fi-section", children:
 						jsx.jsx("span", { className: "fi-section-label", children: t("section.tasks") }),
@@ -831,12 +1135,13 @@ button[class*="_newSession"] { display: none !important; }
 									session: s,
 									selected: s.id === currentId,
 									pending: typeof pending?.get === "function" && pending.get(s.id) !== undefined,
-									onOpen: openSession,
+									onOpen: openSessionAndClose,
 									t,
 								}, s.id)),
 					}),
 				] }),
 				searchDialog,
+				cronPanel,
 			] });
 		}
 		//#endregion
@@ -1156,6 +1461,599 @@ button[class*="_newSession"] { display: none !important; }
 					t,
 				}) : null,
 			] });
+		}
+		//#endregion
+
+		//#region cron panel
+		/**
+		 * Electron 定时任务桥（src/main/cron.ts + preload window.fi.cron）。
+		 * 缺失说明当前不在 fi 桌面壳里（浏览器直接开 dsh 网页），面板退化为提示行。
+		 */
+		const FI_CRON = typeof window !== "undefined" ? window.fi?.cron ?? null : null;
+
+		const pad2 = (value) => String(value).padStart(2, "0");
+		const CRON_FILTERS = ["all", "inProgress", "completed", "failed"];
+		const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
+
+		/** 状态判定与筛选归组同一对函数（对齐 ZCode）：看到什么徽章就落在哪一组。 */
+		function cronHasFailure(task) {
+			return task.lifecycleStatus === "failed" || Boolean(String(task.lastError ?? "").trim());
+		}
+		function cronStatusKind(task) {
+			if (task.lifecycleStatus === "failed") return "failed";
+			if (task.lifecycleStatus === "completed") return "completed";
+			if (task.lifecycleStatus === "paused" || !task.enabled) return "paused";
+			return "active";
+		}
+		/** 失败痕迹归失败；completed 归已完成；其余（active 与已暂停）都算进行中。 */
+		function cronFilterKind(task) {
+			if (cronHasFailure(task)) return "failed";
+			return cronStatusKind(task) === "completed" ? "completed" : "inProgress";
+		}
+
+		function cronScheduleText(task, t) {
+			const s = task.schedule;
+			if (s.unit === "minute") return format(t("cron.schedule.everyMinutes"), { n: s.interval });
+			const time = `${pad2(s.hour ?? 9)}:${pad2(s.minute ?? 0)}`;
+			if (s.unit === "day") return format(t("cron.schedule.daily"), { time });
+			if (s.unit === "week") {
+				const days = [...(s.weekdays ?? [])]
+					.sort((a, b) => WEEKDAY_ORDER.indexOf(a) - WEEKDAY_ORDER.indexOf(b))
+					.map((d) => t(`cron.weekday.${d}`))
+					.join(t("cron.join"));
+				return format(t("cron.schedule.weekly"), { days, time });
+			}
+			return format(t("cron.schedule.monthly"), { day: s.monthDay ?? 1, time });
+		}
+
+		/** 下次运行相对时间；过期/缺失返回 null（非运行中卡片不展示，防过期时间误导）。 */
+		function cronFutureRelative(ts, t) {
+			if (typeof ts !== "number" || ts <= Date.now()) return null;
+			const minutes = Math.round((ts - Date.now()) / 60000);
+			if (minutes < 1) return t("cron.soon");
+			if (minutes < 60) return format(t("cron.in.minutes"), { n: minutes });
+			const hours = Math.floor(minutes / 60);
+			if (hours < 24) return format(t("cron.in.hours"), { n: hours });
+			return format(t("cron.in.days"), { n: Math.floor(hours / 24) });
+		}
+
+		const CRON_STATUS_ICON = {
+			active: ICONS.cronActive,
+			paused: ICONS.cronPaused,
+			completed: ICONS.cronDone,
+			failed: ICONS.cronFailed,
+		};
+
+		/**
+		 * 面板左缘 = 侧栏宽度。从自身区域根（.fi-region）向上爬，跳过零宽包装层，
+		 * 父容器首次显著变宽（≥1.5×）处即「侧栏列 | 主区域」的布局分界，当前节点
+		 * 就是侧栏列。找不到时退化为全屏覆盖。ResizeObserver 跟踪拖拽调宽与折叠。
+		 */
+		function useSidebarWidth(enabled) {
+			const [width, setWidth] = react.useState(0);
+			react.useEffect(() => {
+				if (!enabled) return undefined;
+				let el = document.querySelector(".fi-region");
+				let sidebar = null;
+				while (el !== null && el !== undefined) {
+					const parent = el.parentElement;
+					if (parent === null) break;
+					const w = el.getBoundingClientRect().width;
+					const parentW = parent.getBoundingClientRect().width;
+					if (w > 0 && parentW > w * 1.5) {
+						sidebar = el;
+						break;
+					}
+					el = parent;
+				}
+				if (sidebar === null || sidebar.getBoundingClientRect().width <= 0) {
+					setWidth(0);
+					return undefined;
+				}
+				const update = () => setWidth(sidebar.getBoundingClientRect().width);
+				update();
+				const observer = new ResizeObserver(update);
+				observer.observe(sidebar);
+				return () => observer.disconnect();
+			}, [enabled]);
+			return width;
+		}
+
+		function CronRow({ task, onRowAction, t }) {
+			const kind = cronStatusKind(task);
+			const failed = cronHasFailure(task);
+			const scheduleText = cronScheduleText(task, t);
+			const nextText = kind === "active" && !failed ? cronFutureRelative(task.nextRunAt, t) : null;
+			const badgeText = nextText !== null
+				? `${scheduleText} · ${format(t("cron.next"), { when: nextText })}`
+				: scheduleText;
+			const badge = jsx.jsx("span", {
+				className: kind === "active" && !failed ? "fi-cron-badge" : "fi-cron-badge fi-cron-badge--dim",
+				title: scheduleText,
+				children: jsx.jsx("span", { className: "fi-cron-badge-text", children: badgeText }),
+			});
+			return jsx.jsxs("div", {
+				className: `fi-cron-row${kind === "completed" ? " fi-cron-row--done" : ""}`,
+				role: "button",
+				tabIndex: 0,
+				onClick: () => onRowAction("edit", task, null),
+				onKeyDown: (event) => {
+					if (event.key === "Enter" || event.key === " ") {
+						event.preventDefault();
+						onRowAction("edit", task, null);
+					}
+				},
+				children: [
+					jsx.jsx("span", { className: `fi-cron-status fi-cron-status--${kind}`, title: t(`cron.status.${kind}`),
+						children: icon(CRON_STATUS_ICON[kind], 16) }),
+					jsx.jsxs("span", { className: "fi-cron-main", children: [
+						jsx.jsx("span", { className: "fi-cron-name", children: task.title }),
+						failed
+							? jsx.jsxs("span", { className: "fi-cron-meta", children: [
+								jsx.jsx("span", { className: "fi-cron-failed", title: task.lastError ?? undefined, children:
+									[icon(ICONS.cronFailed, 12), t("cron.lastError")] }),
+								badge,
+							] })
+							: kind === "active"
+								? jsx.jsx("span", { className: "fi-cron-meta", children: badge })
+								: jsx.jsxs("span", { className: "fi-cron-meta", children: [
+									t(`cron.status.${kind}`),
+									badge,
+								] }),
+					] }),
+					jsx.jsx("span", { className: "fi-cron-count", children: format(t("cron.count"), { n: task.runCount }) }),
+					jsx.jsx("button", {
+						type: "button",
+						className: "fi-cron-more",
+						"aria-label": t("cron.menu.edit"),
+						title: t("cron.menu.edit"),
+						onClick: (event) => {
+							event.stopPropagation();
+							onRowAction("menu", task, event);
+						},
+						children: icon(ICONS.cronMore, 16),
+					}),
+				],
+			});
+		}
+
+		/** 行操作菜单。点外/Escape/缩放关闭；删除走两步确认（第二次点击才执行）。 */
+		function CronRowMenu({ x, y, task, busy, onAction, onClose, t }) {
+			const [confirming, setConfirming] = react.useState(false);
+			react.useEffect(() => {
+				const onDocClick = (event) => {
+					if (event.target instanceof Element && event.target.closest(".fi-fb-menu")) return;
+					onClose();
+				};
+				const onKey = (event) => {
+					if (event.key === "Escape") onClose();
+				};
+				window.addEventListener("click", onDocClick, true);
+				window.addEventListener("resize", onClose);
+				window.addEventListener("keydown", onKey);
+				return () => {
+					window.removeEventListener("click", onDocClick, true);
+					window.removeEventListener("resize", onClose);
+					window.removeEventListener("keydown", onKey);
+				};
+			}, [onClose]);
+			const kind = cronStatusKind(task);
+			const items = [
+				{ key: "runNow", label: t("cron.menu.runNow"), disabled: busy },
+				task.lastSessionId ? { key: "openSession", label: t("cron.menu.openSession") } : null,
+				kind === "failed" ? { key: "enable", label: t("cron.menu.enable") } : null,
+				kind === "active" || kind === "paused"
+					? { key: "toggle", label: task.enabled ? t("cron.menu.pause") : t("cron.menu.resume") }
+					: null,
+				{ key: "edit", label: t("cron.menu.edit") },
+				{
+					key: "delete",
+					label: confirming ? t("cron.menu.confirmDelete") : t("cron.menu.delete"),
+					danger: true,
+					onClick: () => (confirming ? onAction("delete", task) : setConfirming(true)),
+				},
+			].filter((item) => item !== null);
+			const style = {
+				left: Math.max(4, Math.min(x, window.innerWidth - 190)),
+				top: Math.max(4, Math.min(y, window.innerHeight - items.length * 34 - 12)),
+			};
+			return jsx.jsx("div", { className: "fi-fb-menu", style, children: items.map((item) =>
+				jsx.jsx("button", {
+					type: "button",
+					className: "fi-fb-menu-item",
+					style: item.danger ? { color: "var(--dsw-alias-state-danger-primary)" } : undefined,
+					disabled: item.disabled === true,
+					onClick: () => (item.onClick !== undefined ? item.onClick() : onAction(item.key, task)),
+					children: item.label,
+				}, item.key)) });
+		}
+
+		/**
+		 * 新建/编辑表单。客户端先做本地校验（面板语言），主进程校验作为兜底；
+		 * 保存成功由父层关闭表单，失败把主进程错误文案显示在表单底部。
+		 */
+		function CronForm({ initial, onSave, onCancel, t }) {
+			const [title, setTitle] = react.useState(initial?.title ?? "");
+			const [targetKind, setTargetKind] = react.useState(initial?.targetKind ?? "default");
+			const [folderPath, setFolderPath] = react.useState(initial?.workspacePath ?? "");
+			const [unit, setUnit] = react.useState(initial?.schedule?.unit ?? "minute");
+			const [every, setEvery] = react.useState(String(initial?.schedule?.interval ?? 15));
+			const [at, setAt] = react.useState(
+				`${pad2(initial?.schedule?.hour ?? 9)}:${pad2(initial?.schedule?.minute ?? 0)}`);
+			const [weekdays, setWeekdays] = react.useState(() => new Set(initial?.schedule?.weekdays ?? [1]));
+			const [monthDay, setMonthDay] = react.useState(String(initial?.schedule?.monthDay ?? 1));
+			const [plan, setPlan] = react.useState(initial?.recurring === false ? "limited" : "forever");
+			const [maxRuns, setMaxRuns] = react.useState(String(initial?.maxRuns ?? 1));
+			const [prompt, setPrompt] = react.useState(initial?.prompt ?? "");
+			const [error, setError] = react.useState(null);
+			const [saving, setSaving] = react.useState(false);
+			const [defaultDir, setDefaultDir] = react.useState(null);
+
+			react.useEffect(() => {
+				if (FI_CRON === null) return;
+				FI_CRON.defaultDir().then((r) => {
+					if (r?.ok === true) setDefaultDir(r.path);
+				}).catch(() => {});
+			}, []);
+
+			const pickFolder = () => {
+				FI_CRON?.pickFolder().then((r) => {
+					if (r?.ok === true && r.path) {
+						setFolderPath(r.path);
+						setTargetKind("folder");
+					}
+				}).catch(() => {});
+			};
+
+			const toggleWeekday = (day) => {
+				setWeekdays((prev) => {
+					const next = new Set(prev);
+					if (next.has(day)) next.delete(day);
+					else next.add(day);
+					return next;
+				});
+			};
+
+			const save = () => {
+				if (title.trim() === "") return setError(t("cron.validate.name"));
+				if (prompt.trim() === "") return setError(t("cron.validate.prompt"));
+				if (targetKind === "folder" && folderPath.trim() === "") return setError(t("cron.validate.folder"));
+				const everyNumber = Math.floor(Number(every));
+				if (!Number.isFinite(everyNumber) || everyNumber < 1) {
+					return setError(t("cron.validate.maxRuns"));
+				}
+				if (unit === "week" && weekdays.size === 0) return setError(t("cron.validate.weekdays"));
+				const runs = Math.floor(Number(maxRuns));
+				if (plan === "limited" && (!Number.isFinite(runs) || runs < 1)) {
+					return setError(t("cron.validate.maxRuns"));
+				}
+				const draft = {
+					title: title.trim(),
+					prompt: prompt.trim(),
+					targetKind,
+					workspacePath: targetKind === "folder" ? folderPath.trim() : null,
+					schedule: unit === "minute"
+						? { unit, interval: everyNumber }
+						: unit === "week"
+							? { unit, interval: everyNumber, at, weekdays: [...weekdays] }
+							: unit === "month"
+								? { unit, interval: everyNumber, at, monthDay: Math.floor(Number(monthDay)) || 1 }
+								: { unit, interval: everyNumber, at },
+					recurring: plan === "forever",
+					maxRuns: plan === "forever" ? null : runs,
+				};
+				setSaving(true);
+				setError(null);
+				Promise.resolve(onSave(draft)).then((failure) => {
+					setSaving(false);
+					if (failure !== null && failure !== undefined) setError(failure);
+				}).catch((err) => {
+					setSaving(false);
+					setError(err?.message ?? String(err));
+				});
+			};
+
+			const intervalLabel = t(`cron.form.intervalUnit.${{ minute: "minutes", day: "days", week: "weeks", month: "months" }[unit]}`);
+			return jsx.jsxs("div", { className: "fi-cron-form", children: [
+				jsx.jsxs("div", { className: "fi-cron-field", children: [
+					jsx.jsx("span", { className: "fi-cron-label", children: t("cron.form.name") }),
+					jsx.jsx("input", {
+						className: "fi-cron-input", value: title, maxLength: 120,
+						placeholder: t("cron.form.namePlaceholder"), spellCheck: false,
+						onChange: (event) => setTitle(event.target.value),
+					}),
+				] }),
+				jsx.jsxs("div", { className: "fi-cron-field", children: [
+					jsx.jsx("span", { className: "fi-cron-label", children: t("cron.form.location") }),
+					jsx.jsxs("div", { className: "fi-cron-seg", children: [
+						jsx.jsx("button", { type: "button", "aria-pressed": targetKind === "default" ? "true" : "false",
+							onClick: () => setTargetKind("default"), children: t("cron.form.locationDefault") }),
+						jsx.jsx("button", { type: "button", "aria-pressed": targetKind === "folder" ? "true" : "false",
+							onClick: () => setTargetKind("folder"), children: t("cron.form.locationFolder") }),
+					] }),
+					targetKind === "default"
+						? jsx.jsx("span", { className: "fi-cron-hint", children:
+							`${t("cron.form.locationDefaultHint")}${defaultDir !== null ? ` · ${defaultDir}` : ""}` })
+						: jsx.jsxs("div", { className: "fi-cron-path", children: [
+							jsx.jsx("button", { type: "button", className: "fi-cron-btn", onClick: pickFolder, children:
+								t("cron.form.pick") }),
+							jsx.jsx("span", { className: "fi-cron-path-text", children:
+								folderPath === "" ? t("cron.form.noFolder") : folderPath }),
+						] }),
+					jsx.jsx("span", { className: "fi-cron-hint", children:
+						targetKind === "folder" ? t("cron.form.locationFolderHint") : "" }),
+				] }),
+				jsx.jsxs("div", { className: "fi-cron-field", children: [
+					jsx.jsx("span", { className: "fi-cron-label", children: t("cron.form.repeat") }),
+					jsx.jsxs("div", { className: "fi-cron-seg", children: [
+						["minute", "day", "week", "month"].map((key) =>
+							jsx.jsx("button", {
+								type: "button",
+								"aria-pressed": unit === key ? "true" : "false",
+								onClick: () => setUnit(key),
+								children: t(`cron.form.unit.${key}`),
+							}, key)),
+					] }),
+					unit !== "minute"
+						? jsx.jsx("input", { className: "fi-cron-input", type: "time", value: at,
+							onChange: (event) => setAt(event.target.value), "aria-label": t("cron.form.time") })
+						: null,
+					unit === "week"
+						? jsx.jsx("div", { className: "fi-cron-wd", children: WEEKDAY_ORDER.map((day) =>
+							jsx.jsx("button", {
+								type: "button",
+								"aria-pressed": weekdays.has(day) ? "true" : "false",
+								onClick: () => toggleWeekday(day),
+								children: t(`cron.weekday.${day}`),
+							}, day)) })
+						: null,
+					unit === "month"
+						? jsx.jsx("input", { className: "fi-cron-input", type: "number", min: 1, max: 28, value: monthDay,
+							onChange: (event) => setMonthDay(event.target.value), "aria-label": t("cron.form.monthDay"),
+							style: { maxWidth: 120 } })
+						: null,
+					jsx.jsxs("div", { className: "fi-cron-grid2", children: [
+						jsx.jsxs("div", { className: "fi-cron-field", children: [
+							jsx.jsx("span", { className: "fi-cron-label", children: t("cron.form.interval") }),
+							jsx.jsx("input", { className: "fi-cron-input", type: "number", min: 1, max: 9999, value: every,
+								onChange: (event) => setEvery(event.target.value),
+								"aria-label": t("cron.form.interval"), style: { maxWidth: 120 } }),
+							jsx.jsx("span", { className: "fi-cron-hint", children: intervalLabel }),
+						] }),
+					] }),
+				] }),
+				jsx.jsxs("div", { className: "fi-cron-field", children: [
+					jsx.jsx("span", { className: "fi-cron-label", children: t("cron.form.plan") }),
+					jsx.jsxs("div", { className: "fi-cron-seg", children: [
+						jsx.jsx("button", { type: "button", "aria-pressed": plan === "forever" ? "true" : "false",
+							onClick: () => setPlan("forever"), children: t("cron.form.plan.forever") }),
+						jsx.jsx("button", { type: "button", "aria-pressed": plan === "limited" ? "true" : "false",
+							onClick: () => setPlan("limited"), children: t("cron.form.plan.limited") }),
+					] }),
+					plan === "limited"
+						? jsx.jsx("input", { className: "fi-cron-input", type: "number", min: 1, max: 9999, value: maxRuns,
+							onChange: (event) => setMaxRuns(event.target.value),
+							"aria-label": t("cron.form.maxRuns"), style: { maxWidth: 120 } })
+						: null,
+				] }),
+				jsx.jsxs("div", { className: "fi-cron-field", children: [
+					jsx.jsx("span", { className: "fi-cron-label", children: t("cron.form.prompt") }),
+					jsx.jsx("textarea", {
+						className: "fi-cron-textarea", value: prompt, maxLength: 20000,
+						placeholder: t("cron.form.promptPlaceholder"),
+						onChange: (event) => setPrompt(event.target.value),
+					}),
+				] }),
+				jsx.jsx("div", { className: "fi-cron-alert", children: error ?? "" }),
+				jsx.jsxs("div", { className: "fi-cron-foot", children: [
+					jsx.jsx("button", { type: "button", className: "fi-cron-btn", disabled: saving, onClick: onCancel, children:
+						t("cron.form.cancel") }),
+					jsx.jsx("button", { type: "button", className: "fi-cron-btn fi-cron-btn--primary", disabled: saving, onClick: save, children:
+						saving ? t("cron.form.saving") : t("cron.form.save") }),
+				] }),
+			] });
+		}
+
+		/**
+		 * 定时任务整页面板：portal 到 body，覆盖侧栏右侧的全部区域。左缘实时跟随
+		 * 侧栏宽度；Esc / 再次点击侧栏按钮 / 任何会话被打开时由父层关闭。
+		 * 视图内路由：列表 / 新建 / 编辑（对齐 ZCode「列表 → 整页编辑」的换页模式）。
+		 */
+		function CronPanel({ open, onClose, openSession, t }) {
+			const [tasks, setTasks] = react.useState(null);
+			const [filter, setFilter] = react.useState("all");
+			const [view, setView] = react.useState({ mode: "list" });
+			const [menu, setMenu] = react.useState(null);
+			const [busyId, setBusyId] = react.useState(null);
+			const [note, setNote] = react.useState(null);
+			const noteTimer = react.useRef(undefined);
+			const sidebarWidth = useSidebarWidth(open);
+
+			// 打开即复位（对齐 ZCode：切换视图即回到「全部」），并拉一次全量。
+			react.useEffect(() => {
+				if (!open) return;
+				setFilter("all");
+				setView({ mode: "list" });
+				setMenu(null);
+				setBusyId(null);
+				setNote(null);
+				if (FI_CRON !== null) {
+					FI_CRON.list().then((r) => {
+						setTasks(r?.ok === true && Array.isArray(r.tasks) ? r.tasks : []);
+					}).catch(() => setTasks([]));
+				}
+			}, [open]);
+
+			// 主进程每次落库后推全量；仅面板打开期间订阅。
+			react.useEffect(() => {
+				if (!open || FI_CRON === null) return undefined;
+				return FI_CRON.onChanged((next) => setTasks(Array.isArray(next) ? next : []));
+			}, [open]);
+
+			react.useEffect(() => {
+				if (!open) return undefined;
+				const onKey = (event) => {
+					if (!event.isComposing && event.key === "Escape") onClose();
+				};
+				document.addEventListener("keydown", onKey);
+				return () => document.removeEventListener("keydown", onKey);
+			}, [open, onClose]);
+
+			const showNote = (text) => {
+				setNote(text);
+				if (noteTimer.current !== undefined) window.clearTimeout(noteTimer.current);
+				noteTimer.current = window.setTimeout(() => setNote(null), 3000);
+			};
+
+			if (!open) return null;
+
+			if (FI_CRON === null) {
+				return reactDom.createPortal(
+					jsx.jsx("div", { className: "fi-cron-root", style: { left: sidebarWidth }, children:
+						jsx.jsx("div", { className: "fi-cron-inner", children:
+							jsx.jsx("div", { className: "fi-cron-note", children: t("cron.desktopOnly") }) }) }),
+					document.body,
+				);
+			}
+
+			const act = (id, operation) => {
+				if (busyId !== null) return;
+				setBusyId(id);
+				const call = operation === "delete" ? FI_CRON.remove(id)
+					: operation === "runNow" ? FI_CRON.runNow(id)
+						: operation === "toggle" || operation === "enable"
+							? FI_CRON.setEnabled(id, operation === "enable" ? true : !(tasks ?? []).find((task) => task.id === id)?.enabled)
+							: null;
+				if (call === null) {
+					setBusyId(null);
+					return;
+				}
+				Promise.resolve(call).then((r) => {
+					setBusyId(null);
+					if (r?.ok === false) showNote(format(t("cron.op.failed"), { msg: r.error ?? "" }));
+				}).catch((err) => {
+					setBusyId(null);
+					showNote(format(t("cron.op.failed"), { msg: err?.message ?? String(err) }));
+				});
+			};
+
+			/** 行内路由：⋯ 按钮 → 打开菜单；行点击/回车 → 进编辑。 */
+			const handleRowAction = (action, task, event) => {
+				if (action === "menu") {
+					setMenu({ x: event.clientX, y: event.clientY, task });
+					return;
+				}
+				if (action === "edit") {
+					setMenu(null);
+					setView({ mode: "edit", task });
+				}
+			};
+
+			/** 菜单项动作：立即运行/打开会话/启停/编辑/删除。 */
+			const handleMenuAction = (action, task) => {
+				setMenu(null);
+				if (action === "edit") {
+					setView({ mode: "edit", task });
+					return;
+				}
+				if (action === "openSession") {
+					if (task.lastSessionId !== null) {
+						openSession(task.lastSessionId);
+						onClose();
+					}
+					return;
+				}
+				act(task.id, action);
+			};
+
+			const save = (draft) => view.mode === "create" ? FI_CRON.create(draft) : FI_CRON.update(view.task.id, draft);
+
+			const list = tasks ?? [];
+			const visible = filter === "all" ? list : list.filter((task) => cronFilterKind(task) === filter);
+
+			let body;
+			if (view.mode === "create" || view.mode === "edit") {
+				body = jsx.jsx(CronForm, {
+					initial: view.mode === "edit" ? view.task : null,
+					onSave: (draft) => save(draft).then((r) => {
+						if (r?.ok === true) setView({ mode: "list" });
+						return r?.ok === true ? null : r?.error ?? "error";
+					}),
+					onCancel: () => setView({ mode: "list" }),
+					t,
+				});
+			} else if (tasks === null) {
+				body = jsx.jsx("div", { className: "fi-cron-note", children: t("empty.loading") });
+			} else if (list.length === 0) {
+				body = jsx.jsxs("div", { className: "fi-cron-empty", children: [
+					jsx.jsx("span", { children: t("cron.empty.title") }),
+					jsx.jsx("button", { type: "button", className: "fi-cron-btn fi-cron-btn--primary",
+						onClick: () => setView({ mode: "create" }), children: t("cron.create") }),
+				] });
+			} else {
+				body = jsx.jsxs(react.Fragment, { children: [
+					jsx.jsxs("div", { className: "fi-cron-chips", children: [
+						CRON_FILTERS.map((key) => jsx.jsx("button", {
+							type: "button",
+							className: "fi-cron-chip",
+							"aria-pressed": filter === key ? "true" : "false",
+							onClick: () => setFilter(key),
+							children: t(`cron.filter.${key}`),
+						}, key)),
+					] }),
+					note !== null ? jsx.jsx("div", { className: "fi-cron-alert", children: note }) : null,
+					visible.length === 0
+						? jsx.jsx("div", { className: "fi-cron-note", children: t("cron.filter.empty") })
+						: jsx.jsx("div", { className: "fi-cron-list", children: visible.map((task) =>
+							jsx.jsx(CronRow, { task, onRowAction: handleRowAction, t }, task.id)) }),
+				] });
+			}
+
+			return reactDom.createPortal(
+				jsx.jsxs("div", { className: "fi-cron-root", style: { left: sidebarWidth }, onKeyDown: (event) => {
+					if (event.key === "Escape") onClose();
+				}, children: [
+					jsx.jsx("div", { className: "fi-cron-scroll", children:
+						jsx.jsxs("div", { className: "fi-cron-inner", children: [
+							view.mode === "list"
+								? jsx.jsxs("div", { className: "fi-cron-head", children: [
+									jsx.jsxs("div", { className: "fi-cron-heading", children: [
+										jsx.jsxs("span", { className: "fi-cron-title", children: [
+											icon(ICONS.schedule, 20),
+											t("cron.title"),
+										] }),
+										jsx.jsx("span", { className: "fi-cron-sub", children: t("cron.subtitle") }),
+									] }),
+									jsx.jsxs("div", { className: "fi-cron-head-actions", children: [
+										jsx.jsx("button", { type: "button", className: "fi-cron-btn fi-cron-iconbtn",
+											"aria-label": t("cron.refresh"), title: t("cron.refresh"),
+											onClick: () => FI_CRON.list().then((r) => setTasks(r?.ok === true && Array.isArray(r.tasks) ? r.tasks : [])).catch(() => {}),
+											children: icon(ICONS.refresh, 14) }),
+										jsx.jsx("button", { type: "button", className: "fi-cron-btn fi-cron-btn--primary",
+											onClick: () => setView({ mode: "create" }), children: t("cron.create") }),
+									] }),
+								] })
+								: jsx.jsx("div", { className: "fi-cron-head", children:
+									jsx.jsxs("div", { className: "fi-cron-heading", children: [
+										jsx.jsxs("span", { className: "fi-cron-title", children: [
+											icon(ICONS.schedule, 20),
+											view.mode === "create" ? t("cron.form.newTitle") : t("cron.form.editTitle"),
+										] }),
+									] }) }),
+							body,
+						] }) }),
+					menu !== null ? jsx.jsx(CronRowMenu, {
+						x: menu.x,
+						y: menu.y,
+						task: menu.task,
+						busy: busyId === menu.task.id,
+						onAction: handleMenuAction,
+						onClose: () => setMenu(null),
+						t,
+					}) : null,
+				] }),
+				document.body,
+			);
 		}
 		//#endregion
 
