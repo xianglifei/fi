@@ -259,6 +259,7 @@ window.__ModuleLoader__.load({
 			"plugin.desktopOnly": "插件中心仅限 fi 桌面版使用",
 			"plugin.repo": "查看 GitHub 仓库",
 			"plugin.rec.dsh-whale-widget.desc": "右下角余额小鲸鱼挂件：余额、今日已用、峰谷定价一目了然",
+			"plugin.rec.dsh-fx-review.desc": "右侧栏 Markdown 预览变批注审阅：选中文字做 CriticMarkup 批注，一键复制交回模型修改（fx-review 嵌入版）",
 			"quote.addToTask": "添加到当前任务",
 			"quote.tooLong": "单条引用过长（上限 {n} 字）",
 			"quote.count": "引用 · {n}",
@@ -414,6 +415,7 @@ window.__ModuleLoader__.load({
 			"plugin.desktopOnly": "The plugin center is available in the fi desktop app only",
 			"plugin.repo": "View the GitHub repository",
 			"plugin.rec.dsh-whale-widget.desc": "A little whale widget for your DeepSeek balance, today's usage and peak/off-peak pricing",
+			"plugin.rec.dsh-fx-review.desc": "Turn the right-sidebar Markdown preview into a review surface: annotate text with CriticMarkup, copy the annotated document back to the model (fx-review embedded)",
 			"quote.addToTask": "Add to Current Task",
 			"quote.tooLong": "Selection is too long to quote (max {n} characters)",
 			"quote.count": "Quotes · {n}",
@@ -2440,6 +2442,12 @@ function ActionButton({ label, icon: iconName, onClick, pressed, current }) {
 				spec: "dsh-whale-widget",
 				version: "0.3.10",
 				repo: "https://github.com/MeteorNOX/DeepSeek-Balance-Whale-Widget",
+			},
+			{
+				name: "dsh-fx-review",
+				spec: "dsh-fx-review",
+				version: "0.1.0",
+				repo: "https://github.com/xianglifei/fx-review",
 			},
 		];
 

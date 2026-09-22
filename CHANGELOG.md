@@ -6,6 +6,10 @@
 
 ## [Unreleased]
 
+### 新增
+
+- 插件中心推荐位收录 dsh-fx-review（fx-review 嵌入版 dsh 插件）：安装后右侧栏打开 `.md` 文件默认进入 CriticMarkup 批注审阅——选中文字即可插入/删除/替换/高亮/评论，批注按文件自动保存在本地，一键复制（可带引导 Prompt）粘回会话让模型按批注修改；预览头部下拉可随时切回 dsh 内置 Markdown 渲染。安装按钮需插件发布到 npm 后生效，未发布前可手动 `dsh plugin --profile fi add link:<fx-review 仓库>/dsh-plugin` 本地安装（均需重启 fi）。
+
 ## [1.0.0] - 2026-09-22
 
 ### Changed
