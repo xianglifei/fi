@@ -6,6 +6,8 @@
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-09-22
+
 ### Added
 
 - 对话记录支持「选中即引用」：用鼠标在对话消息（用户消息/助手回复/思考过程/工具输出）里选中一段文字，会弹出「添加到当前任务」悬浮菜单；点击后引用以计数 chip 的形式挂在输入框正上方（与输入框左缘对齐），可展开逐条预览、单条移除或全部清除。发送时引用自动并入提示词（以带来源标注的引用块附在正文之后，历史里以引用块样式可见），输入框始终保持干净。同一会话最多积累 8 条引用（单条上限 8000 字、总量上限 16000 字），重复选择同一段文字不会重复计入；发送失败（如未配置 API Key 被拒）时引用自动回到 chip 上不丢失。该功能的发送合并依赖 dsh 输入服务的内部发送出口，dsh 大版本改动导致契约失效时功能整体静默隐藏，不影响其它功能。
@@ -106,7 +108,8 @@
 - 流式输出中的关窗确认（preload 监听停止按钮 aria-label「停止生成/Stop generating」，标记失配时静默降级为直接关）。
 - 单实例锁、macOS 标准角色菜单（复制粘贴/缩放/刷新）。
 
-[Unreleased]: https://github.com/xianglifei/fi/compare/v0.5.5...HEAD
+[Unreleased]: https://github.com/xianglifei/fi/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/xianglifei/fi/compare/v0.5.5...v0.6.0
 [0.5.5]: https://github.com/xianglifei/fi/compare/v0.5.4...v0.5.5
 [0.5.4]: https://github.com/xianglifei/fi/compare/v0.5.3...v0.5.4
 [0.5.3]: https://github.com/xianglifei/fi/compare/v0.5.2...v0.5.3
