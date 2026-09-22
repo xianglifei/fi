@@ -6,6 +6,8 @@
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-09-22
+
 ### Changed
 
 - 窗口标题品牌换为「fi」：此前标题栏空闲时显示「DeepSeek Harness」、进入任务后显示「任务标题 - DeepSeek Harness」；现在分别显示「fi」与「任务标题 - fi」，附件预览等弹窗同样处理。只改 fi 窗口的标题栏，页面内容与浏览器直开 dsh 的表现不变。
@@ -124,7 +126,8 @@
 - 流式输出中的关窗确认（preload 监听停止按钮 aria-label「停止生成/Stop generating」，标记失配时静默降级为直接关）。
 - 单实例锁、macOS 标准角色菜单（复制粘贴/缩放/刷新）。
 
-[Unreleased]: https://github.com/xianglifei/fi/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/xianglifei/fi/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/xianglifei/fi/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/xianglifei/fi/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/xianglifei/fi/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/xianglifei/fi/compare/v0.5.5...v0.6.0
