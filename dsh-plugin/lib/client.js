@@ -2449,7 +2449,7 @@ function ActionButton({ label, icon: iconName, onClick, pressed, current }) {
 			{
 				name: "dsh-fx-review",
 				spec: "github:xianglifei/fx-review#path:dsh-plugin",
-				version: "0.1.0",
+				version: "0.2.0",
 				repo: "https://github.com/xianglifei/fx-review",
 			},
 		];

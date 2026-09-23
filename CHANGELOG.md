@@ -8,7 +8,8 @@
 
 ### 变更
 
-- 插件中心推荐位收录 dsh-fx-review（fx-review 嵌入版 dsh 插件）：安装后右侧栏打开 `.md` 文件默认进入 CriticMarkup 批注审阅——选中文字即可插入/删除/替换/高亮/评论，批注按文件自动保存在本地，一键复制（可带引导 Prompt）粘回会话让模型按批注修改；预览头部下拉可随时切回 dsh 内置 Markdown 渲染（均需重启 fi 生效）。
+- 插件中心推荐位收录 dsh-fx-review（fx-review 嵌入版 dsh 插件）：安装后右侧栏打开 `.md` 文件默认进入 CriticMarkup 批注审阅——选中文字即可插入/删除/替换/高亮/评论，批注按文件自动保存在本地；预览头部下拉可随时切回 dsh 内置 Markdown 渲染（均需重启 fi 生效）。
+- dsh-fx-review 0.2.0：预览去掉自带工具栏（对齐 dsh 内置渲染器观感）；评论栏头部为 撤销/重做/清空 图标组 + 「提交」按钮——提交把引导 Prompt 与带批注标记的全文挂到输入框上方 chip，输入框可补充要求、正常发送时自动附加到消息尾部；评论栏宽度可拖拽并记住；修复浮动菜单按钮在选区被宿主偷走时失灵的问题。
 - 推荐位的安装渠道统一切换为 GitHub 直装：两个推荐插件（dsh-whale-widget、dsh-fx-review）的安装 spec 改为 `github:<owner>/<repo>` 形式（fx-review 的插件包在仓库子目录，spec 为 `github:xianglifei/fx-review#path:dsh-plugin`），`dsh plugin add` 底层的 pnpm 直接从对应仓库默认分支拉取，不再经 npm registry；「已安装」徽章的包名匹配不受影响。本地开发仍可用 `link:` 形式安装。
 
 ### 新增
