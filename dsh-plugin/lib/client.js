@@ -2435,17 +2435,20 @@ function ActionButton({ label, icon: iconName, onClick, pressed, current }) {
 		 */
 		const FI_PLUGINS = typeof window !== "undefined" ? window.fi?.plugins ?? null : null;
 
-		/** 推荐表（随 fi 发版人工维护）；一句话介绍走词典键 plugin.rec.<name>.desc。 */
+		/** 推荐表（随 fi 发版人工维护）；一句话介绍走词典键 plugin.rec.<name>.desc。
+		 *  spec 统一走 GitHub 直装（github:<owner>/<repo>，子目录包加 #path:<dir>），
+		 *  安装即 `dsh plugin --profile fi add <spec>` → pnpm 从仓库默认分支拉取，
+		 *  不经 npm registry；「已安装」匹配按包名（deps 键），与 spec 形态无关。 */
 		const RECOMMENDED_PLUGINS = [
 			{
 				name: "dsh-whale-widget",
-				spec: "dsh-whale-widget",
+				spec: "github:MeteorNOX/DeepSeek-Balance-Whale-Widget",
 				version: "0.3.10",
 				repo: "https://github.com/MeteorNOX/DeepSeek-Balance-Whale-Widget",
 			},
 			{
 				name: "dsh-fx-review",
-				spec: "dsh-fx-review",
+				spec: "github:xianglifei/fx-review#path:dsh-plugin",
 				version: "0.1.0",
 				repo: "https://github.com/xianglifei/fx-review",
 			},
